@@ -208,7 +208,14 @@ bucket, ou todo push do Pub/Sub virando 401. Ver **Armadilhas** no fim.
    > Terraform reencontra tudo. O `.terraform/` com os plugins dos provedores
    > também é recriado pelo `init`.
 
-7. **GitHub Pages**: Settings → Pages → **Source: GitHub Actions** (não "Deploy
+7. **Habilitar os workflows e o GitHub Pages — antes de qualquer push na
+   `main`.** Se o repositório foi **forkado**, o GitHub chega com os workflows
+   desabilitados: abra a aba **Actions** e, se aparecer "Workflows aren't being
+   run on this forked repository", clique em **"I understand my workflows, go
+   ahead and enable them"**. Fazer isto depois de já ter empurrado na `main`
+   **não** recupera o evento perdido — ver Armadilha 4.
+
+   Em seguida, **GitHub Pages**: Settings → Pages → **Source: GitHub Actions** (não "Deploy
    from a branch"). Sem isso o `deploy-pages@v4` de
    [`docs.yml`](../.github/workflows/docs.yml) falha e o manual não publica.
 
@@ -581,14 +588,34 @@ _todo_ arquivo casa com o allowlist: `*.md`, `docs/*`, `openspec/*`,
 
 - **Sintoma:** o Actions mostra sucesso, mas o Cloud Run continua rodando a
   imagem placeholder `hello`. Nenhum erro em nenhum lugar.
-- **Agrava:** `deploy.yml` **não tem `workflow_dispatch`** — não existe disparo
-  manual. As saídas são re-rodar a execução pela UI do Actions, ou levar à `main`
-  uma alteração fora do allowlist.
+- **Saída:** `deploy.yml` agora tem **`workflow_dispatch`** (change
+  `implantacao-fortesaude`). Actions → Deploy → _Run workflow_ na `main` implanta
+  o commit corrente, e o gate **não se aplica** a disparo manual — pedir a
+  implantação de propósito é o oposto de um merge sem efeito. Também dá para
+  re-rodar a execução pela UI, ou levar à `main` uma alteração fora do allowlist.
 - **Quando morde:** uma mudança de implantação puramente documental. A
   configuração desta implantação passa pelo gate por tocar `.env.example`,
   `apps/api/src/config.ts` e `infra/terraform/*.tf` — nenhum deles no allowlist.
 
-### 4. O manual não publica num repositório recém-criado
+### 4. Fork recém-criado tem os workflows DESABILITADOS
+
+O GitHub desabilita os workflows de um repositório que **já continha arquivos de
+workflow quando foi forkado**. A aba Actions mostra "Workflows aren't being run
+on this forked repository" e um botão **"I understand my workflows, go ahead and
+enable them"**.
+
+- **Sintoma:** o push na `main` acontece, o git aceita, e **nada roda** — sem
+  erro, sem execução vermelha, sem notificação. A aba Actions fica vazia, e a
+  contagem de execuções é zero em todos os workflows, inclusive historicamente.
+- **O evento perdido não volta.** Habilitar os workflows **não reexecuta** o push
+  que já ocorreu. Sem disparo manual, a implantação ficaria presa na imagem
+  placeholder do Cloud Run indefinidamente — foi o que motivou acrescentar
+  `workflow_dispatch` ao `deploy.yml`.
+- **Evita:** habilitar na Fase 0, passo 7, **antes** de qualquer push na `main`.
+- **Se já aconteceu:** habilite e então Actions → **Deploy** → _Run workflow_ na
+  `main`.
+
+### 5. O manual não publica num repositório recém-criado
 
 `docs.yml` dispara em push na `main` que toque `docs/manual/**` ou o próprio
 workflow. Num fork novo, enquanto ninguém tocar o manual, o site **nunca é
@@ -597,7 +624,7 @@ construído** e o link do rodapé do shell dá 404.
 - **Evita:** o primeiro push já toca `docs/manual/**`; e GitHub Pages precisa
   estar em **Source: GitHub Actions** (Fase 0, passo 7).
 
-### 5. `version = "latest"` é resolvido na criação do recurso, não na execução
+### 6. `version = "latest"` é resolvido na criação do recurso, não na execução
 
 Dois erros distintos do primeiro `apply` do projeto do Forte Saúde têm a mesma
 raiz: o Cloud Run valida o `secret_key_ref` **ao criar** o Job ou a revisão —
@@ -620,7 +647,7 @@ confere que a versão existe e que a service account tem
   (change `implantacao-fortesaude`). Num projeto já afetado, um `terraform
   apply` seguinte conclui, porque a concessão já existe.
 
-### 6. `create` que falha na espera deixa o recurso `tainted` — e o impasse do `deletion_protection`
+### 7. `create` que falha na espera deixa o recurso `tainted` — e o impasse do `deletion_protection`
 
 Quando um `create` de Cloud Run Job é **aceito** pela API e depois falha na
 espera de prontidão (`Error waiting to create Job: Error waiting for Creating
@@ -676,7 +703,7 @@ and running `terraform apply`
   serviço é o endpoint de produção e destruí-lo é indisponibilidade. A assimetria
   é deliberada — ver o comentário em `bootstrap_job.tf`.
 
-### 7. Sucesso falso do Job de bootstrap como "aplicar migrações"
+### 8. Sucesso falso do Job de bootstrap como "aplicar migrações"
 
 A imagem do Job de bootstrap é **pinada** (`lifecycle.ignore_changes = [image]`)
 e o pipeline **não** a atualiza — só a do Job de migração. Usá-lo para
