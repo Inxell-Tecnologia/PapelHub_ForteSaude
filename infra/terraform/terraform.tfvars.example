@@ -1,12 +1,23 @@
 # Copie para terraform.tfvars (gitignored) e preencha com os valores reais
-# do projeto GCP. Nada aqui tem um valor real — são só exemplos.
+# do projeto GCP.
+#
+# Este repositório é um FORK POR CLIENTE (change implantacao-fortesaude,
+# design.md D1): os valores de implantação — identificação do cliente,
+# repositório autorizado no CI/CD, prefixo de recursos, endereço canônico do
+# manual — já vêm como DEFAULT em variables.tf. Este arquivo guarda só o que é
+# segredo e o que não existe antes do primeiro `apply`.
+#
+# Procedimento completo, em seis fases: docs/runbook-implantacao.md
 
-project_id = "gdoc-prod-123456"
+project_id = "fortesaude-papelhub"
 region     = "us-central1"
 
 # Domínio do SPA (opcional). Sem ele, o bucket+CDN do frontend existe mas
-# sem balanceador/certificado — ver variables.tf (frontend_domain).
-# frontend_domain = "app.gdoc.exemplo.com.br"
+# sem balanceador/certificado — ver variables.tf (frontend_domain). Enquanto
+# fica vazio, a SPA é servida pela própria API em *.run.app, mesma origem.
+# frontend_domain = "app.papelhub.exemplo.com.br"
+
+# --- Valores que só existem DEPOIS do primeiro apply (Fase 5 do runbook) ---
 
 # Origem(ns) do browser autorizadas a fazer upload/download direto no bucket
 # de arquivos (CORS). Em produção a SPA é servida pela PRÓPRIA API no Cloud Run
@@ -14,35 +25,40 @@ region     = "us-central1"
 # não um domínio à parte. Enquanto não houver domínio custom (frontend_domain),
 # o Cloud Run expõe DUAS formas de URL para o mesmo serviço e o usuário pode
 # abrir o SPA por qualquer uma; AMBAS precisam constar aqui, senão o upload
-# direto falha no preflight quando aberto pela forma ausente:
+# direto falha no preflight quando aberto pela forma ausente — sintoma:
+# "Falha no envio." + erro de CORS no console, sem menção a bucket.
 #   - https://<app>-<hash>-<região>.a.run.app
 #   - https://<app>-<nº-projeto>.<região>.run.app
 cors_allowed_origins = [
   "http://localhost:5173",
-  # "https://gdoc-prod-api-hmwigy67mq-uc.a.run.app",
-  # "https://gdoc-prod-api-434553790439.us-central1.run.app",
+  # "https://papelhub-prod-api-<hash>-uc.a.run.app",
+  # "https://papelhub-prod-api-<nº-projeto>.us-central1.run.app",
 ]
 
 # Audience do token OIDC do push do Pub/Sub → POST /internal/storage-events.
 # Defina como "<api_url>/internal/storage-events" (api_url = output do serviço
 # Cloud Run, a forma -hash-<região>.a.run.app). Definir este valor LIGA a
 # validação OIDC na API; vazio mantém desligado (dev). Ver variables.tf.
-# pubsub_push_audience = "https://gdoc-prod-api-hmwigy67mq-uc.a.run.app/internal/storage-events"
+# ORDEM IMPORTA: publicar a imagem da API ANTES de ligar isto, senão todo push
+# válido vira 401 até o código novo subir (runbook, Fase 3 antes da Fase 5).
+# pubsub_push_audience = "https://papelhub-prod-api-<hash>-uc.a.run.app/internal/storage-events"
 
-# Identificação do cliente exibida na tela de login/shell (design.md D8 do
-# change rebranding-doc7-setes). Vazio (padrão) = nenhuma identificação exibida.
-# app_client_name = "SETES"
-
-# Override opcional do endereço do manual do usuário desta implantação,
-# exibido no rodapé do shell autenticado (design.md D2 do change
-# acesso-ao-manual-no-shell). Vazio (padrão) = a aplicação adota o endereço
-# canônico do manual publicado por este repositório (design.md D2 do change
-# corrige-alcance-do-manual).
-# app_manual_url = "https://carlossalesnaturaltec.github.io/GDoc/"
-
-# E-mail do administrador global criado pelo Job de bootstrap (obrigatório —
-# ver infra/terraform/README.md, seção "Bootstrap do administrador global").
-# A senha NÃO vai aqui: é criada como versão do secret bootstrap-admin-password
-# depois do apply.
-bootstrap_admin_email = "admin@exemplo.com.br"
+# --- Administrador global inicial (Fase 4 do runbook) ---
+# A SENHA NÃO VAI AQUI: é criada como versão do secret
+# papelhub-prod-bootstrap-admin-password depois do apply, para que não entre no
+# state do Terraform. O e-mail é IDENTIFICADOR DE ACESSO, não endereço de
+# entrega — não existe canal de e-mail na implantação (design.md D9).
+bootstrap_admin_email = "admin@papelhub.com"
 # bootstrap_admin_unit  = "Administração"
+
+# --- Valores cujo default versionado já é o desta implantação ---
+# Descomente apenas para sobrepor o default de variables.tf.
+#
+# app_client_name   = "Forte Saúde"    # default já é este
+# app_name          = "papelhub"       # default já é este — IMUTÁVEL após o 1º apply
+# github_repository = "Inxell-Tecnologia/PapelHub_ForteSaude"   # default já é este
+#
+# app_manual_url: NÃO definir. O endereço canônico embutido na aplicação já é o
+# da GitHub Pages deste repositório; um override redundante é mais um valor
+# para divergir (design.md D5). Só preencher se esta implantação publicar o
+# manual em outro lugar.

@@ -4,7 +4,7 @@ import { UserRole } from '@gdoc/shared';
 import { mockFetch } from './mock-fetch';
 import { renderApp } from './render-app';
 
-const MANUAL_URL = 'https://carlossalesnaturaltec.github.io/GDoc/';
+const MANUAL_URL = 'https://inxell-tecnologia.github.io/PapelHub_ForteSaude/';
 
 /**
  * Acesso ao manual como último item da navegação (change

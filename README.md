@@ -9,11 +9,22 @@ login/shell (`APP_CLIENT_NAME`, ver `.env.example`) são configuráveis por
 implantação — ver `openspec/specs/identidade-visual/` (capability entregue
 pela change arquivada em
 `openspec/changes/archive/2026-08-05-rebranding-doc7-setes/` e atualizada
-pela change `rebranding-papelhub`).
-Identificadores internos de código e infraestrutura (`@gdoc/*`,
-`gdoc_dev`/`gdoc_ci`, `name_prefix = "gdoc"` no Terraform) permanecem
-inalterados por decisão — trocar `name_prefix` faria o Terraform destruir e
-recriar bucket, Cloud SQL e tópico Pub/Sub (design.md D5 dessa change).
+pela change `rebranding-papelhub`). Esta implantação é do cliente
+**Forte Saúde**, no projeto GCP `fortesaude-papelhub`.
+
+Este repositório é um **fork por cliente** (`openspec/specs/implantacao-por-cliente/`):
+a identificação do cliente, o repositório autorizado no CI/CD, o prefixo de
+recursos e o endereço canônico do manual já vêm como _default_ versionado — um
+`terraform apply` a partir dos defaults não aponta para outro cliente nem fica
+sem identificação. **Para levar um projeto GCP vazio ao ar, siga
+[`docs/runbook-implantacao.md`](docs/runbook-implantacao.md)** — seis fases, porque
+as dependências entre os passos são circulares.
+
+Identificadores de desenvolvimento e CI (`@gdoc/*`, `gdoc_dev`/`gdoc_ci`,
+`gdoc-dev-bucket`) permanecem inalterados por decisão — não têm recurso de nuvem
+por trás. O `name_prefix` do Terraform é `papelhub-prod`, e é **escolha anterior
+ao primeiro `apply`, imutável depois dele**: num projeto provisionado, trocá-lo
+faz o Terraform destruir e recriar bucket, Cloud SQL e tópico Pub/Sub.
 
 Este README cobre a **fundação de infraestrutura** (mudança
 `bootstrap-infrastructure`, arquivada em `openspec/changes/archive/`) —
@@ -154,7 +165,8 @@ verificável contra o GCS real, após o Terraform ser aplicado.
 
 O manual do usuário é um site [MkDocs](https://www.mkdocs.org/) (tema Material,
 `docs/manual/docs/*.md`), publicado no GitHub Pages em
-<https://carlossalesnaturaltec.github.io/GDoc/>. Para buildar e servir localmente
+<https://inxell-tecnologia.github.io/PapelHub_ForteSaude/>. Para buildar e servir
+localmente
 (requer Python 3):
 
 ```bash

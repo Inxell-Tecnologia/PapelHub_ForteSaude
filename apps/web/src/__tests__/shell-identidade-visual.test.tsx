@@ -14,19 +14,19 @@ describe('Identidade visual no shell (identidade-visual)', () => {
       },
       'GET /auth/public-config': {
         status: 200,
-        body: { appName: 'PapelHub', clientName: 'SETES', manualUrl: '' },
+        body: { appName: 'PapelHub', clientName: 'Forte Saúde', manualUrl: '' },
       },
     });
     renderApp(['/']);
 
     await screen.findByRole('img', { name: 'PapelHub' });
-    expect(screen.getByText('SETES')).toBeInTheDocument();
+    expect(screen.getByText('Forte Saúde')).toBeInTheDocument();
 
     const trigger = document.querySelector('.ant-layout-sider-trigger') as HTMLElement;
     await userEvent.click(trigger);
 
     await screen.findByText('PH');
-    expect(screen.queryByText('SETES')).not.toBeInTheDocument();
+    expect(screen.queryByText('Forte Saúde')).not.toBeInTheDocument();
   });
 
   it('no shell expandido, a logomarca tem nome acessível igual ao nome da aplicação', async () => {

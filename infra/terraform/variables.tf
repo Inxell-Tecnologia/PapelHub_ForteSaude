@@ -33,9 +33,31 @@ variable "environment" {
 }
 
 variable "app_name" {
-  description = "Prefixo de nome usado em todos os recursos deste app."
+  description = <<-EOT
+    Prefixo de nome usado em todos os recursos deste app — fonte única de
+    `local.name_prefix`, sem nome literal de recurso em nenhum `.tf`.
+
+    **Minúsculo obrigatoriamente** (change implantacao-fortesaude, design.md
+    D3): o prefixo deriva nomes cujo domínio o GCP valida como minúsculo —
+    bucket do Cloud Storage (`<project_id>-<name_prefix>-files`), instância
+    Cloud SQL (`-pg`), serviço e Jobs do Cloud Run, repositório do Artifact
+    Registry. Uma maiúscula aqui reprova o `apply` na criação do bucket.
+
+    Não confundir com o NOME EXIBIDO do produto: `PapelHub`, camelizado, é
+    literal da camada de apresentação (apps/web) e é o nome comercial. As duas
+    grafias convivem por natureza — uma é marca, a outra identificador de
+    infraestrutura — e alterar uma não exige alterar a outra.
+
+    **Escolha anterior ao primeiro provisionamento, imutável depois dele.**
+    Recursos regionais do GCP têm nome imutável: alterar este valor num projeto
+    já provisionado faz o Terraform DESTRUIR E RECRIAR o bucket de arquivos, a
+    instância Cloud SQL e os tópicos Pub/Sub — perda de dados, não renomeação.
+    A troca de `gdoc` para `papelhub` só foi possível porque o projeto
+    `fortesaude-papelhub` estava vazio. A partir do primeiro `apply`, trate
+    este valor como congelado.
+  EOT
   type        = string
-  default     = "gdoc"
+  default     = "papelhub"
 }
 
 variable "db_tier" {
@@ -47,13 +69,13 @@ variable "db_tier" {
 variable "db_name" {
   description = "Nome do banco de dados da aplicação no Cloud SQL."
   type        = string
-  default     = "gdoc"
+  default     = "papelhub"
 }
 
 variable "db_user" {
-  description = "Usuário Postgres da aplicação (dono das tabelas; RLS usa FORCE ROW LEVEL SECURITY para restringi-lo mesmo assim)."
+  description = "Usuário Postgres da aplicação (dono das tabelas; RLS usa FORCE ROW LEVEL SECURITY para restringi-lo mesmo assim). Nenhum SQL, código, workflow ou script referencia este nome — ele só existe dentro do Cloud SQL (change implantacao-fortesaude, design.md D4)."
   type        = string
-  default     = "gdoc_app"
+  default     = "papelhub_app"
 }
 
 variable "api_image" {
@@ -285,10 +307,23 @@ variable "app_client_name" {
     login e no shell (change rebranding-doc7-setes, design.md D8). Não é
     segredo — texto exibido publicamente a qualquer visitante da tela de
     login — por isso vai como env var comum do Cloud Run, não Secret Manager.
-    Vazio (padrão) = nenhuma identificação de cliente é exibida.
+    Vazio = nenhuma identificação de cliente é exibida.
+
+    Este repositório é um FORK POR CLIENTE, e o default abaixo é o valor de
+    produção desta implantação — não um neutro (change implantacao-fortesaude,
+    design.md D1). O default neutro ("") era correto num repositório
+    multi-cliente e aqui seria um risco: um `apply` feito sem o
+    terraform.tfvars local (outra máquina, outro operador) provisionaria o
+    cliente SEM identificação alguma, e o sintoma — uma tela de login que
+    parece certa — não denuncia a causa.
+
+    Alterável sem rebuild do frontend nem nova imagem: o valor é resolvido em
+    runtime via GET /auth/public-config, então
+    `gcloud run services update --set-env-vars APP_CLIENT_NAME=...` corrige em
+    produção (design.md D2).
   EOT
   type        = string
-  default     = ""
+  default     = "Forte Saúde"
 }
 
 variable "app_manual_url" {
@@ -312,7 +347,12 @@ variable "github_repository" {
     Repositório GitHub ("owner/repo") autorizado a assumir a service account
     de deploy do CI/CD via Workload Identity Federation — sem chave exportada
     (ver cicd.tf). Só esse repositório específico pode se passar pela SA.
+
+    Fork por cliente: o default é ESTE repositório (change
+    implantacao-fortesaude, design.md D1). Um default apontando para outro
+    repositório faz a troca de token do STS falhar com erro que não nomeia o
+    repositório esperado — nenhum deploy sai, e a causa não aparece no log.
   EOT
   type        = string
-  default     = "CarlosSalesNaturalTec/GDoc"
+  default     = "Inxell-Tecnologia/PapelHub_ForteSaude"
 }

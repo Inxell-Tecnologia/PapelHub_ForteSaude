@@ -7,7 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Toda saída do modelo (respostas, mensagens de commit, PRs, specs) é sempre em pt_BR.**
 - Integrações (merge de PR) usam **merge commit — nunca squash.**
 - Node **22** (`.nvmrc`); npm workspaces. `postinstall` na raiz compila `packages/shared` automaticamente.
-- **Nome exibido do produto é `PapelHub`** (e `APP_CLIENT_NAME` por implantação); os identificadores internos permanecem `gdoc` (`@gdoc/*`, `gdoc_dev`/`gdoc_ci`, `name_prefix = "gdoc"` no Terraform) **por decisão** — renomear o `name_prefix` faria o Terraform destruir e recriar bucket, Cloud SQL e tópico Pub/Sub. Não "padronize" esses nomes.
+- **Nome exibido do produto é `PapelHub`**; a identificação do cliente é `APP_CLIENT_NAME` por implantação (`Forte Saúde` nesta). Este repositório é um **fork por cliente**: os valores de implantação já vêm como _default_ versionado (ver `openspec/specs/implantacao-por-cliente/`), não como neutros.
+- **Identificadores de desenvolvimento e CI permanecem `gdoc`** (`@gdoc/*`, `gdoc_dev`/`gdoc_ci`, `gdoc-dev-bucket`) **por decisão** — não têm recurso de nuvem por trás, e trocá-los é churn sem efeito observável. Não "padronize" esses nomes. O `gdoc_ci` em particular é o papel **não-superuser** da CI, escolhido para que superuser não mascare bug de isolamento RLS.
+- **`name_prefix` do Terraform é `papelhub-prod`** (`var.app_name = "papelhub"`, minúsculo — o GCP valida bucket/Cloud SQL/Cloud Run como minúsculos; `PapelHub` camelizado é só o nome exibido). **É escolha anterior ao primeiro `terraform apply` e imutável depois dele**: num projeto já provisionado, trocá-lo faz o Terraform destruir e recriar bucket, Cloud SQL e tópico Pub/Sub — perda de dados, não renomeação. A troca de `gdoc` para `papelhub` só foi possível porque `fortesaude-papelhub` estava vazio (change `implantacao-fortesaude`, design.md D3). Para esta implantação, considere-o congelado.
 
 ## Manual do usuário: `docs/manual/`
 
