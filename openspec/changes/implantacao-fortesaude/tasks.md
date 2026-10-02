@@ -320,3 +320,23 @@ secret e as concessões já existiam.
   10.2 foram parseadas com `python-hcl2`, o que confirma sintaxe mas **não**
   resolve referências — um nome de recurso errado num `depends_on` só aparece no
   `validate`.
+- [x] 10.5 **`deletion_protection` do provider 6.x trava a recuperação de um
+  `create` falho.** Sequência real observada: os `create` dos Jobs de bootstrap
+  e de avisos falharam (10.1 e 10.2) **depois** de a API aceitar o recurso, na
+  espera de prontidão — então o Terraform gravou o id e marcou os dois como
+  `tainted`. O apply seguinte planejou **substituir** os dois, e o destroy foi
+  recusado: `cannot destroy job without setting deletion_protection=false`. O
+  provider google 6.x (pinado em `versions.tf` como `~> 6.0`) introduziu essa
+  flag com default `true` em Cloud Run v2, e o repositório só a declarava para
+  o Cloud SQL.
+  **Corrigido** com `deletion_protection = false` nos **quatro** Jobs
+  (`bootstrap`, `migrate`, `trash_purge`, `notify_expiring_grants`): Job não
+  guarda dado e destruir/recriar é gratuito, então ali a flag só produz impasse.
+  **Deliberadamente NÃO replicado** no `google_cloud_run_v2_service.api`, onde o
+  default `true` é rede de segurança desejável — o serviço é o endpoint de
+  produção e destruí-lo é indisponibilidade, não recriação barata.
+  **Limite do conserto, registrado porque não é óbvio:** o provider lê a flag do
+  **state**, não da configuração, então isto impede o próximo impasse e **não
+  desfaz um já instalado** — para esse caso a Armadilha 6 do runbook traz a
+  saída (`gcloud run jobs delete` + `terraform state rm` + `apply`, já que a
+  trava é do Terraform e não da API do Cloud Run).

@@ -120,6 +120,21 @@ resource "google_cloud_run_v2_job" "trash_purge" {
     }
   }
 
+  # O provider google 6.x introduziu `deletion_protection` com default `true`
+  # em Cloud Run v2, e é uma trava DO TERRAFORM (não existe campo equivalente
+  # na API do Cloud Run). Nos Jobs ela só atrapalha: Job não guarda dado algum
+  # e destruir/recriar é gratuito. Pior, ela cria um impasse quando um `create`
+  # falha na espera de prontidão: o recurso fica `tainted`, o apply seguinte
+  # planeja SUBSTITUIR, e o destroy é recusado — `cannot destroy job without
+  # setting deletion_protection=false`. Como o provider lê a flag do STATE, não
+  # da configuração, mudar isto aqui não desfaz um impasse já instalado (aí é
+  # `terraform untaint` ou `state rm`); serve para não haver o próximo.
+  # Deliberadamente NÃO replicado no Cloud Run Service da API (cloud_run.tf),
+  # onde o default `true` é rede de segurança desejável: o serviço é o endpoint
+  # de produção, e destruí-lo é indisponibilidade, não recriação barata.
+  # Change implantacao-fortesaude.
+  deletion_protection = false
+
   lifecycle {
     # Mesmo racional do Cloud Run Service (cloud_run.tf): a imagem publicada
     # pelo CI/CD não deve ser revertida por um `terraform apply` seguinte.
@@ -291,6 +306,21 @@ resource "google_cloud_run_v2_job" "notify_expiring_grants" {
       max_retries = 1
     }
   }
+
+  # O provider google 6.x introduziu `deletion_protection` com default `true`
+  # em Cloud Run v2, e é uma trava DO TERRAFORM (não existe campo equivalente
+  # na API do Cloud Run). Nos Jobs ela só atrapalha: Job não guarda dado algum
+  # e destruir/recriar é gratuito. Pior, ela cria um impasse quando um `create`
+  # falha na espera de prontidão: o recurso fica `tainted`, o apply seguinte
+  # planeja SUBSTITUIR, e o destroy é recusado — `cannot destroy job without
+  # setting deletion_protection=false`. Como o provider lê a flag do STATE, não
+  # da configuração, mudar isto aqui não desfaz um impasse já instalado (aí é
+  # `terraform untaint` ou `state rm`); serve para não haver o próximo.
+  # Deliberadamente NÃO replicado no Cloud Run Service da API (cloud_run.tf),
+  # onde o default `true` é rede de segurança desejável: o serviço é o endpoint
+  # de produção, e destruí-lo é indisponibilidade, não recriação barata.
+  # Change implantacao-fortesaude.
+  deletion_protection = false
 
   lifecycle {
     ignore_changes = [template[0].template[0].containers[0].image]

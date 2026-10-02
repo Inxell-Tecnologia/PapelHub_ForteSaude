@@ -614,7 +614,63 @@ confere que a versão existe e que a service account tem
   (change `implantacao-fortesaude`). Num projeto já afetado, um `terraform
   apply` seguinte conclui, porque a concessão já existe.
 
-### 6. Sucesso falso do Job de bootstrap como "aplicar migrações"
+### 6. `create` que falha na espera deixa o recurso `tainted` — e o impasse do `deletion_protection`
+
+Quando um `create` de Cloud Run Job é **aceito** pela API e depois falha na
+espera de prontidão (`Error waiting to create Job: Error waiting for Creating
+Job`), o Terraform grava o id e marca o recurso como **tainted**. O apply
+seguinte então planeja **substituir** — destruir e recriar — mesmo que a
+configuração não tenha mudado.
+
+E aí bate a segunda trava: o provider google 6.x introduziu
+`deletion_protection` com default `true` em Cloud Run v2, então o destroy é
+recusado:
+
+```
+Error: cannot destroy job without setting deletion_protection=false
+and running `terraform apply`
+```
+
+- **Sintoma:** um `apply` que ninguém pediu aparece querendo destruir Jobs
+  (`Plan: ... 2 to destroy`), e falha no destroy. Repetir o `apply` não sai do
+  lugar — é laço, não transitório.
+- **Por que a flag na configuração não resolve sozinha:** o provider lê
+  `deletion_protection` do **state**, não do arquivo. Um recurso que entrou em
+  state com `true` continua protegido até que um apply **de atualização** grave
+  `false` — e, para um recurso `tainted`, o Terraform não planeja atualização,
+  planeja substituição. Os Jobs deste repositório já declaram
+  `deletion_protection = false`, o que impede o **próximo** impasse; não desfaz
+  um já instalado.
+- **Saída, para um impasse já instalado.** Remova os Jobs quebrados por fora e
+  do state, e deixe o Terraform recriá-los limpos. O `deletion_protection` do
+  provider **não** bloqueia o `gcloud` — é trava do Terraform, não da API:
+
+  ```bash
+  REGION="us-central1"
+  gcloud run jobs delete papelhub-prod-bootstrap      --region="$REGION" --quiet
+  gcloud run jobs delete papelhub-prod-notify-grants  --region="$REGION" --quiet
+
+  terraform state rm google_cloud_run_v2_job.bootstrap
+  terraform state rm google_cloud_run_v2_job.notify_expiring_grants
+
+  terraform apply
+  ```
+
+  Antes disso, **confirme que a versão do secret da senha existe** (Fase 1a) —
+  sem ela o Job de bootstrap volta a falhar na criação e o ciclo recomeça.
+
+  Alternativa menos invasiva, quando os Jobs em GCP estão íntegros e só o state
+  está sujo: `terraform untaint <endereço>` nos dois e depois `apply`, que então
+  planeja atualização em vez de substituição. Prefira a remoção quando a criação
+  falhou de fato — um Job criado com spec inválida pode ficar numa condição que
+  o `refresh` não denuncia.
+
+- **O Cloud Run Service da API continua com `deletion_protection = true`** (o
+  default), de propósito: Job não guarda dado e recriá-lo é gratuito, mas o
+  serviço é o endpoint de produção e destruí-lo é indisponibilidade. A assimetria
+  é deliberada — ver o comentário em `bootstrap_job.tf`.
+
+### 7. Sucesso falso do Job de bootstrap como "aplicar migrações"
 
 A imagem do Job de bootstrap é **pinada** (`lifecycle.ignore_changes = [image]`)
 e o pipeline **não** a atualiza — só a do Job de migração. Usá-lo para
