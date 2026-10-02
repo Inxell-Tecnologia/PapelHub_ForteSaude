@@ -351,3 +351,11 @@ secret e as concessões já existiam.
   runbook, separada das Armadilhas de propósito: armadilha é falha silenciosa do
   nosso desenho, isto é falha ruidosa de fora. A mensagem nomeia um recurso que
   não é a causa, e sem esse registro o operador tende a editar `pubsub.tf`.
+- [x] 10.7 **Endereço desta implantação preenchido no manual** (fecha o marcador
+  deixado pela tarefa 4.2 e antecipa o passo 7.6.2). O `terraform apply` da Fase
+  1 concluiu e a URL do serviço é estável por projeto/região/serviço:
+  `https://papelhub-prod-api-twj52netwq-uc.a.run.app/`. A tabela de valores do
+  runbook passa a registrar também o nº do projeto e **as duas** formas de URL,
+  que a Fase 2 e a Fase 5 consomem — a segunda forma
+  (`-495571187094.us-central1.run.app`) é a que a Armadilha 1 exige no CORS e a
+  que ninguém lembra de coletar.

@@ -23,6 +23,12 @@ a fonte em vez da prosa.
 | Repositório                     | `Inxell-Tecnologia/PapelHub_ForteSaude`           |
 | Administrador global inicial    | `admin@papelhub.com`                              |
 | Manual do usuário               | <https://inxell-tecnologia.github.io/PapelHub_ForteSaude/> |
+| Nº do projeto                   | `495571187094`                                    |
+| URL da API (forma hash)         | https://papelhub-prod-api-twj52netwq-uc.a.run.app |
+| URL da API (forma nº projeto)   | https://papelhub-prod-api-495571187094.us-central1.run.app |
+
+As **duas** formas de URL acima são a mesma Cloud Run. Ambas precisam constar em
+`cors_allowed_origins` na Fase 5 — ver Armadilha 1.
 
 Recursos derivados do prefixo: serviço `papelhub-prod-api`; Jobs
 `papelhub-prod-migrate`, `papelhub-prod-bootstrap`, `papelhub-prod-trash-purge`,
