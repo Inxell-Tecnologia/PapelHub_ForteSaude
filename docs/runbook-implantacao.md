@@ -66,12 +66,17 @@ bucket, ou todo push do Pub/Sub virando 401. Ver **Armadilhas** no fim.
    conta). Sem isso o `apply` falha ao habilitar as APIs de
    [`apis.tf`](../infra/terraform/apis.tf).
 
-2. Autenticar e selecionar o projeto (Cloud Shell já vem autenticado):
+2. Autenticar e selecionar o projeto:
 
    ```bash
-   gcloud auth application-default login     # só fora do Cloud Shell
+   gcloud auth application-default login     # NÃO é necessário no Cloud Shell
    gcloud config set project fortesaude-papelhub
    ```
+
+   No Cloud Shell as credenciais de aplicação (ADC) já vêm servidas pelo
+   ambiente e o provider do Google funciona direto — a documentação do Google é
+   explícita quanto a isso. O `login` acima é para máquina local, onde o
+   provider não encontra ADC e o `plan` falha pedindo credenciais.
 
 3. **Criar o bucket de state.** O Terraform não pode criar o bucket em que vai
    guardar o próprio estado — é a primeira circularidade, e por isso este passo
@@ -86,7 +91,66 @@ bucket, ou todo push do Pub/Sub virando 401. Ver **Armadilhas** no fim.
    O versionamento não é opcional: é o que permite recuperar um state corrompido
    por `apply` interrompido.
 
-4. **Preencher os arquivos locais** (ambos gitignored):
+4. **Clonar o repositório.** Os passos seguintes editam arquivos dentro dele,
+   então ele precisa estar em disco antes.
+
+   **Onde rodar:** o **Cloud Shell** é o lugar natural — já vem com `git`,
+   `gcloud`, `gsutil` e `terraform` instalados e já autenticado na sua conta
+   Google. Alternativa: máquina local com `gcloud` e Terraform instalados.
+
+   **Qual ref clonar — atenção:** a configuração desta implantação (defaults de
+   `variables.tf`, os dois `.example`) vive na **branch do change** até a
+   **Fase 3** integrá-la na `main`. Se você clonar `main` antes disso, vai
+   encontrar os valores do cliente anterior. Clone a branch:
+
+   ```bash
+   cd ~
+   git clone -b claude/loving-allen-jfgt46 \
+     https://github.com/Inxell-Tecnologia/PapelHub_ForteSaude.git
+   cd PapelHub_ForteSaude
+   ```
+
+   Depois da Fase 3, `main` já carrega tudo e o `-b` deixa de ser necessário.
+
+   > ⚠️ **Não integre na `main` agora para "simplificar".** O merge dispara o
+   > `Deploy`, que depende das sete variáveis de repositório criadas só na
+   > **Fase 2** — sem elas o workflow falha no `gcloud` com valores vazios. O
+   > merge é o primeiro passo da Fase 3, depois da Fase 2, de propósito.
+
+   **Repositório privado:** o `git clone` por HTTPS vai pedir credenciais. Use
+   seu usuário do GitHub e um **personal access token** com escopo de leitura do
+   repositório como senha (a senha da conta não funciona mais). Se preferir SSH,
+   cadastre a chave pública do Cloud Shell (`~/.ssh/id_*.pub`, ou gere uma com
+   `ssh-keygen -t ed25519`) em GitHub → Settings → SSH and GPG keys e use
+   `git clone -b <branch> git@github.com:Inxell-Tecnologia/PapelHub_ForteSaude.git`.
+
+   **Não rode `npm install`.** O caminho de provisionamento usa apenas
+   `infra/terraform/`; o monorepo é compilado dentro da imagem de container, no
+   CI (ver [`apps/api/Dockerfile`](../apps/api/Dockerfile)). Instalar as
+   dependências aqui só gasta tempo e os 5 GB do Cloud Shell.
+
+   **Conferir a versão do Terraform** — `versions.tf` exige `>= 1.7.0`:
+
+   ```bash
+   terraform version
+   ```
+
+   O Terraform que vem no Cloud Shell costuma ficar atrás da versão corrente.
+   Se vier abaixo de 1.7, instale uma mais nova no seu diretório home — o
+   `init` da Fase 1 falha com `Unsupported Terraform Core version` antes de
+   tocar em qualquer recurso, então errar aqui é barato:
+
+   ```bash
+   TF_VER=1.9.8
+   cd ~ && curl -fsSL -o tf.zip \
+     "https://releases.hashicorp.com/terraform/${TF_VER}/terraform_${TF_VER}_linux_amd64.zip"
+   mkdir -p ~/bin && unzip -o tf.zip -d ~/bin && rm tf.zip
+   export PATH="$HOME/bin:$PATH"     # persista no ~/.bashrc se quiser
+   terraform version
+   cd ~/PapelHub_ForteSaude
+   ```
+
+5. **Preencher os arquivos locais** (ambos gitignored):
 
    ```bash
    cd infra/terraform
@@ -95,12 +159,30 @@ bucket, ou todo push do Pub/Sub virando 401. Ver **Armadilhas** no fim.
    ```
 
    Conferir em `terraform.tfvars`: `project_id`, `region` e
-   `bootstrap_admin_email`. A identificação do cliente, o prefixo de recursos e
-   o repositório autorizado **não precisam estar aqui** — já são _default_ em
+   `bootstrap_admin_email`. Conferir em `backend.hcl`: o `bucket` é o criado no
+   passo 3. A identificação do cliente, o prefixo de recursos e o repositório
+   autorizado **não precisam estar aqui** — já são _default_ em
    [`variables.tf`](../infra/terraform/variables.tf), porque este repositório é
    um fork por cliente.
 
-5. **GitHub Pages**: Settings → Pages → **Source: GitHub Actions** (não "Deploy
+   > ⚠️ **Estes dois arquivos existem SÓ neste clone.** São gitignored, não vão
+   > para o GitHub e não estão no state. A **Fase 5 edita o `terraform.tfvars`
+   > de novo** (CORS e audience do Pub/Sub), então este clone precisa sobreviver
+   > entre a Fase 1 e a Fase 5.
+   >
+   > No Cloud Shell, o home de 5 GB persiste entre sessões, mas é **apagado após
+   > 120 dias sem uso**, e o **modo efêmero** descarta tudo ao fim da sessão —
+   > não use modo efêmero para esta implantação. Se precisar interromper por
+   > muito tempo, guarde os valores (**menos a senha do administrador**) onde
+   > você recupere depois.
+   >
+   > **Perder o clone não é perder a implantação:** o state fica no bucket GCS
+   > do passo 3. Basta clonar de novo, recriar os dois arquivos a partir dos
+   > `.example`, rodar `terraform init -backend-config=backend.hcl` e o
+   > Terraform reencontra tudo. O `.terraform/` com os plugins dos provedores
+   > também é recriado pelo `init`.
+
+6. **GitHub Pages**: Settings → Pages → **Source: GitHub Actions** (não "Deploy
    from a branch"). Sem isso o `deploy-pages@v4` de
    [`docs.yml`](../.github/workflows/docs.yml) falha e o manual não publica.
 
@@ -186,7 +268,23 @@ de token do STS **sem nomear o repositório esperado** — erro opaco cuja causa
 migrado.
 
 1. Integrar a branch de trabalho na `main` — **merge commit, nunca squash**
-   (convenção do repositório; o gate da Fase 3 depende de `SHA^1` existir).
+   (convenção do repositório; o gate desta fase depende de `SHA^1` existir).
+
+   É a branch que você clonou na Fase 0, passo 4. O merge só acontece **agora**,
+   depois da Fase 2: é ele que dispara o `Deploy`, e o `Deploy` precisa das sete
+   variáveis de repositório. Integrar antes produz um workflow vermelho por
+   variáveis vazias.
+
+   Depois do merge, atualize o clone antes de seguir para as Fases 4 e 5, para
+   que o `terraform.tfvars` da Fase 5 seja editado sobre o código integrado:
+
+   ```bash
+   cd ~/PapelHub_ForteSaude
+   git checkout main && git pull origin main
+   ```
+
+   Os arquivos `infra/terraform/backend.hcl` e `terraform.tfvars` são gitignored
+   e **sobrevivem à troca de branch** — não precisam ser recriados.
 
 2. Acompanhar Actions: `CI` → ao concluir com sucesso, dispara `Deploy`
    ([`deploy.yml`](../.github/workflows/deploy.yml)). O pipeline, nesta ordem:
@@ -424,7 +522,7 @@ workflow. Num fork novo, enquanto ninguém tocar o manual, o site **nunca é
 construído** e o link do rodapé do shell dá 404.
 
 - **Evita:** o primeiro push já toca `docs/manual/**`; e GitHub Pages precisa
-  estar em **Source: GitHub Actions** (Fase 0.5).
+  estar em **Source: GitHub Actions** (Fase 0, passo 6).
 
 ### 5. Sucesso falso do Job de bootstrap como "aplicar migrações"
 
