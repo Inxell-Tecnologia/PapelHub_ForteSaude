@@ -278,3 +278,45 @@
   reprovaria o módulo inteiro, e só na Fase 1, na máquina do operador. Reescrito
   como `<project_id>-<name_prefix>-files`. **Nunca usar `${}` em texto de
   `description`**; se for inevitável, escapar como `$${}`.
+
+## 10. Defeitos revelados pelo primeiro provisionamento real
+
+Encontrados ao executar a Fase 1 contra `fortesaude-papelhub`. Os dois são
+anteriores a este change (vêm da fundação), mas só um projeto **vazio** os
+expõe: no projeto do cliente anterior os Jobs nasceram num `apply` em que o
+secret e as concessões já existiam.
+
+- [x] 10.1 **`version = "latest"` da senha do administrador — ordenação, não
+  corrida.** `bootstrap_job.tf` referencia `latest` do secret
+  `bootstrap-admin-password`, cujo container é o único gerenciado pelo Terraform
+  (a senha nunca entra no state, por desenho). O Cloud Run resolve `latest` **ao
+  criar o Job**, então em projeto novo o `apply` completo falha sempre com
+  `Secret .../versions/latest was not found`. O runbook colocava a gravação da
+  senha na Fase 4, depois do `apply` — ordem impossível.
+  **Corrigido** com a Fase 1a: `terraform apply -target=google_secret_manager_secret.bootstrap_admin_password`
+  → gravar a versão → `apply` completo. A Fase 4 deixa de duplicar a gravação e
+  passa a só conferir que a versão existe. O alerta de senha suja no
+  PowerShell acompanhou a gravação para a Fase 1a, onde ela agora acontece.
+- [x] 10.2 **Arestas de IAM ausentes no grafo — corrida real.** Os Jobs
+  `trash_purge` e `notify_expiring_grants` têm service account **própria**,
+  criada na mesma camada do grafo, e seus `depends_on` listavam
+  `google_secret_manager_secret_version.database_url` mas **não** a respectiva
+  `google_secret_manager_secret_iam_member`. O Cloud Run valida o
+  `secretAccessor` na criação do Job, então o Terraform podia criar o Job antes
+  da concessão → `Error code 9 ... Permission denied on secret`. Resultado não
+  determinístico: na execução real o Job de expurgo passou e o de avisos
+  falhou. **Corrigido** em `scheduler.tf` (as duas arestas) e em `cloud_run.tf`,
+  que tinha a mesma lacuna no serviço da API (`api_database_url` e
+  `api_auth_session_secret`) e vinha escapando por sorte de ordenação.
+- [x] 10.3 **APIs de gerenciamento não pré-habilitadas.** O primeiro `apply`
+  falhou na ativação de API ("erro de ativação e API IAM"): o `apis.tf` habilita
+  as APIs da aplicação, mas o Terraform só habilita algo se as APIs de
+  gerenciamento já estiverem ativas. **Corrigido** com o passo 3 da Fase 0
+  (`gcloud services enable serviceusage cloudresourcemanager iam iamcredentials`)
+  e o registro de que API recém-habilitada demora a propagar — uma retentativa
+  do primeiro `apply` é esperada, não sintoma de erro de configuração.
+- [ ] 10.4 **Rodar `terraform fmt -check` e `validate` na próxima sessão com
+  Terraform instalado** (pendência herdada da tarefa 8.4). As edições de 10.1 e
+  10.2 foram parseadas com `python-hcl2`, o que confirma sintaxe mas **não**
+  resolve referências — um nome de recurso errado num `depends_on` só aparece no
+  `validate`.

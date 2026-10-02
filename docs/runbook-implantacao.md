@@ -78,7 +78,27 @@ bucket, ou todo push do Pub/Sub virando 401. Ver **Armadilhas** no fim.
    explícita quanto a isso. O `login` acima é para máquina local, onde o
    provider não encontra ADC e o `plan` falha pedindo credenciais.
 
-3. **Criar o bucket de state.** O Terraform não pode criar o bucket em que vai
+3. **Pré-habilitar as APIs de base.** O `apis.tf` habilita as APIs que a
+   aplicação usa, mas o Terraform só consegue habilitar qualquer coisa se as
+   APIs de gerenciamento já estiverem ativas — mais uma circularidade. Ative-as
+   com `gcloud` antes do primeiro `apply`:
+
+   ```bash
+   gcloud services enable \
+     serviceusage.googleapis.com \
+     cloudresourcemanager.googleapis.com \
+     iam.googleapis.com \
+     iamcredentials.googleapis.com \
+     --project=fortesaude-papelhub
+   ```
+
+   > **API recém-habilitada demora a propagar.** Se o primeiro `apply` falhar
+   > com `API [...] not enabled` ou `has not been used in project [...] before`,
+   > espere um ou dois minutos e rode `terraform apply` de novo: o Terraform é
+   > idempotente e retoma de onde parou. Uma retentativa no primeiro `apply` de
+   > um projeto novo é esperada, não sintoma de erro de configuração.
+
+4. **Criar o bucket de state.** O Terraform não pode criar o bucket em que vai
    guardar o próprio estado — é a primeira circularidade, e por isso este passo
    é manual:
 
@@ -91,7 +111,7 @@ bucket, ou todo push do Pub/Sub virando 401. Ver **Armadilhas** no fim.
    O versionamento não é opcional: é o que permite recuperar um state corrompido
    por `apply` interrompido.
 
-4. **Clonar o repositório.** Os passos seguintes editam arquivos dentro dele,
+5. **Clonar o repositório.** Os passos seguintes editam arquivos dentro dele,
    então ele precisa estar em disco antes.
 
    **Onde rodar:** o **Cloud Shell** é o lugar natural — já vem com `git`,
@@ -150,7 +170,7 @@ bucket, ou todo push do Pub/Sub virando 401. Ver **Armadilhas** no fim.
    cd ~/PapelHub_ForteSaude
    ```
 
-5. **Preencher os arquivos locais** (ambos gitignored):
+6. **Preencher os arquivos locais** (ambos gitignored):
 
    ```bash
    cd infra/terraform
@@ -160,7 +180,7 @@ bucket, ou todo push do Pub/Sub virando 401. Ver **Armadilhas** no fim.
 
    Conferir em `terraform.tfvars`: `project_id`, `region` e
    `bootstrap_admin_email`. Conferir em `backend.hcl`: o `bucket` é o criado no
-   passo 3. A identificação do cliente, o prefixo de recursos e o repositório
+   passo 4. A identificação do cliente, o prefixo de recursos e o repositório
    autorizado **não precisam estar aqui** — já são _default_ em
    [`variables.tf`](../infra/terraform/variables.tf), porque este repositório é
    um fork por cliente.
@@ -182,7 +202,7 @@ bucket, ou todo push do Pub/Sub virando 401. Ver **Armadilhas** no fim.
    > Terraform reencontra tudo. O `.terraform/` com os plugins dos provedores
    > também é recriado pelo `init`.
 
-6. **GitHub Pages**: Settings → Pages → **Source: GitHub Actions** (não "Deploy
+7. **GitHub Pages**: Settings → Pages → **Source: GitHub Actions** (não "Deploy
    from a branch"). Sem isso o `deploy-pages@v4` de
    [`docs.yml`](../.github/workflows/docs.yml) falha e o manual não publica.
 
@@ -196,6 +216,70 @@ valor de que as Fases 2 e 5 dependem.
 ```bash
 cd infra/terraform
 terraform init -backend-config=backend.hcl
+```
+
+### 1a. Gravar a senha do administrador ANTES do apply completo
+
+Este passo **não é opcional nem adiável**, e a ordem não é preferência:
+
+O Job `papelhub-prod-bootstrap` recebe a senha por
+`secret_key_ref` com `version = "latest"`
+([`bootstrap_job.tf`](../infra/terraform/bootstrap_job.tf)), e **o Cloud Run
+resolve `latest` no momento em que cria o Job**. O Terraform cria apenas o
+_container_ do secret — a versão com a senha real é gravada pelo operador, de
+propósito, para que a senha nunca entre no state. Logo, num projeto novo, o
+`apply` completo **sempre** falha assim enquanto não houver versão:
+
+```
+Error: Error waiting to create Job: ... Error code 9, message:
+spec.template.spec.containers[0].env[5].value_from.secret_key_ref.name:
+Secret projects/<nº>/secrets/papelhub-prod-bootstrap-admin-password/versions/latest
+was not found
+```
+
+Para romper a circularidade sem deixar a senha no state, crie **só o container
+do secret** com um apply direcionado, grave a versão, e só então aplique tudo:
+
+```bash
+terraform apply -target=google_secret_manager_secret.bootstrap_admin_password
+```
+
+```bash
+PROJECT_ID="fortesaude-papelhub"
+echo -n "SUA-SENHA-FORTE-AQUI" | gcloud secrets versions add \
+  "papelhub-prod-bootstrap-admin-password" --data-file=- --project="$PROJECT_ID"
+```
+
+> ⚠️ **No Windows/PowerShell, NÃO use o `echo -n` acima.** `echo` é alias de
+> `Write-Output` e `-n` casa com `-NoEnumerate` — não suprime a quebra de
+> linha. Pior: ao encanar (`|`) para um executável nativo, o PowerShell anexa
+> `\r\r\n`. O secret fica com a senha + 3 bytes invisíveis, o bootstrap grava
+> o hash desse valor sujo e **todo login legítimo vira 401**, sem nenhum erro
+> que aponte a causa. Grave byte-exato via arquivo:
+>
+> ```powershell
+> $pw = "$env:TEMP\pw.bin"
+> [System.IO.File]::WriteAllText($pw, "SUA-SENHA-FORTE-AQUI", (New-Object System.Text.UTF8Encoding($false)))
+> gcloud secrets versions add "papelhub-prod-bootstrap-admin-password" --data-file="$pw" --project=$PROJECT_ID
+> Remove-Item $pw
+> ```
+
+**Conferir o que ficou gravado** — deve ser exatamente o número de caracteres da
+senha, sem `0D`/`0A` no fim:
+
+```bash
+gcloud secrets versions access latest \
+  --secret=papelhub-prod-bootstrap-admin-password --project="$PROJECT_ID" | wc -c
+```
+
+```powershell
+cmd /c "gcloud secrets versions access latest --secret=papelhub-prod-bootstrap-admin-password --project=$PROJECT_ID > `"$env:TEMP\s.bin`""
+[System.IO.File]::ReadAllBytes("$env:TEMP\s.bin").Length
+```
+
+### 1b. Apply completo
+
+```bash
 terraform plan
 ```
 
@@ -319,50 +403,33 @@ não tem auto-registro. O Job
 `apps/api/dist/db/bootstrap.js`, aplica migrações pendentes e cria **somente** o
 `global_admin` — idempotente, _fail-closed_ sem as credenciais.
 
-1. **Gravar a senha como versão do secret.** O Terraform cria só o _container_
-   do secret; a senha nunca entra no state:
+1. **A senha já foi gravada na Fase 1a** — era pré-requisito do `apply`. Se
+   você chegou aqui sem ter feito isso, o `apply` da Fase 1 não teria concluído:
+   volte à Fase 1a.
+
+   Confirme que a versão existe antes de executar o Job:
 
    ```bash
-   PROJECT_ID="fortesaude-papelhub"
-   REGION="us-central1"
-   echo -n "SUA-SENHA-FORTE-AQUI" | gcloud secrets versions add \
-     "papelhub-prod-bootstrap-admin-password" --data-file=- --project="$PROJECT_ID"
+   gcloud secrets versions list papelhub-prod-bootstrap-admin-password \
+     --project="$PROJECT_ID"
    ```
 
-   > ⚠️ **No Windows/PowerShell, NÃO use o `echo -n` acima.** `echo` é alias de
-   > `Write-Output` e `-n` casa com `-NoEnumerate` — não suprime a quebra de
-   > linha. Pior: ao encanar (`|`) para um executável nativo, o PowerShell anexa
-   > `\r\r\n`. O secret fica com a senha + 3 bytes invisíveis, o bootstrap grava
-   > o hash desse valor sujo e **todo login legítimo vira 401**, sem nenhum erro
-   > que aponte a causa. Grave byte-exato via arquivo:
-   >
-   > ```powershell
-   > $pw = "$env:TEMP\pw.bin"
-   > [System.IO.File]::WriteAllText($pw, "SUA-SENHA-FORTE-AQUI", (New-Object System.Text.UTF8Encoding($false)))
-   > gcloud secrets versions add "papelhub-prod-bootstrap-admin-password" --data-file="$pw" --project=$PROJECT_ID
-   > Remove-Item $pw
-   > ```
+2. **Se a senha gravada estava suja** (bytes invisíveis — ver o alerta da Fase
+   1a), corrigir o secret agora **não basta**: `bootstrapAdmin()` é no-op quando
+   já existe um `global_admin` (`apps/api/src/db/bootstrap.ts`), então ele **não
+   reescreve o hash**. É preciso remover o admin e reexecutar o Job — e o
+   `DELETE` tem de rodar dentro de uma transação com o bypass de RLS, senão a
+   linha fica invisível:
 
-2. **Conferir o que ficou gravado** — deve ser exatamente o número de caracteres
-   da senha, sem `0D`/`0A` no fim:
-
-   ```powershell
-   cmd /c "gcloud secrets versions access latest --secret=papelhub-prod-bootstrap-admin-password --project=$PROJECT_ID > `"$env:TEMP\s.bin`""
-   [System.IO.File]::ReadAllBytes("$env:TEMP\s.bin").Length
+   ```sql
+   BEGIN;
+   SELECT set_config('app.user_role','global_admin',true);
+   DELETE FROM users WHERE role='global_admin';
+   COMMIT;
    ```
 
-   > ⚠️ **Se o admin já foi criado com a senha suja, corrigir o secret não
-   > basta.** `bootstrapAdmin()` é no-op quando já existe um `global_admin`
-   > (`apps/api/src/db/bootstrap.ts`), então ele **não reescreve o hash**. É
-   > preciso remover o admin e reexecutar o Job — e o `DELETE` tem de rodar
-   > dentro de uma transação com o bypass de RLS, senão a linha fica invisível:
-   >
-   > ```sql
-   > BEGIN;
-   > SELECT set_config('app.user_role','global_admin',true);
-   > DELETE FROM users WHERE role='global_admin';
-   > COMMIT;
-   > ```
+   Isso só se aplica depois de uma execução que criou o admin — na primeira
+   passagem, pule.
 
 3. **Executar o Job uma vez:**
 
@@ -522,9 +589,32 @@ workflow. Num fork novo, enquanto ninguém tocar o manual, o site **nunca é
 construído** e o link do rodapé do shell dá 404.
 
 - **Evita:** o primeiro push já toca `docs/manual/**`; e GitHub Pages precisa
-  estar em **Source: GitHub Actions** (Fase 0, passo 6).
+  estar em **Source: GitHub Actions** (Fase 0, passo 7).
 
-### 5. Sucesso falso do Job de bootstrap como "aplicar migrações"
+### 5. `version = "latest"` é resolvido na criação do recurso, não na execução
+
+Dois erros distintos do primeiro `apply` do projeto do Forte Saúde têm a mesma
+raiz: o Cloud Run valida o `secret_key_ref` **ao criar** o Job ou a revisão —
+confere que a versão existe e que a service account tem
+`roles/secretmanager.secretAccessor` —, não na primeira execução.
+
+- **Versão inexistente (determinístico).** O secret da senha do administrador
+  tem só o _container_ gerenciado pelo Terraform, por desenho. Em projeto novo o
+  `apply` completo **sempre** falha com `Secret
+  .../bootstrap-admin-password/versions/latest was not found` enquanto a versão
+  não for gravada. Resolvido pela ordem da Fase 1a (apply direcionado → gravar
+  a senha → apply completo). **Não é corrida: nenhuma retentativa resolve.**
+- **Concessão ainda não visível (corrida).** `Error code 9 ... Permission denied
+  on secret ... must be granted the 'Secret Manager Secret Accessor' role`
+  acontecia porque os Jobs de expurgo e de avisos têm service account própria,
+  criada na mesma camada do grafo, e seus `depends_on` listavam a *versão* do
+  secret mas não a *concessão*. Daí o resultado não determinístico: o Job de
+  expurgo passava e o de avisos falhava, na mesma execução. **Corrigido** —
+  `scheduler.tf` e `cloud_run.tf` agora declaram a aresta de IAM
+  (change `implantacao-fortesaude`). Num projeto já afetado, um `terraform
+  apply` seguinte conclui, porque a concessão já existe.
+
+### 6. Sucesso falso do Job de bootstrap como "aplicar migrações"
 
 A imagem do Job de bootstrap é **pinada** (`lifecycle.ignore_changes = [image]`)
 e o pipeline **não** a atualiza — só a do Job de migração. Usá-lo para
