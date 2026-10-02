@@ -1,0 +1,253 @@
+# Tasks — implantacao-fortesaude
+
+> **Fronteira desta fatia (design.md D10):** as seções 1–6 são do repositório e
+> verificáveis por `npm run lint && npm run build && npm run test` no sandbox. A
+> seção 7 é checklist de execução pelo operador, com credencial GCP e acesso ao
+> console — não é executável aqui e não bloqueia o fechamento das seções 1–6.
+
+## 1. Identificação do cliente (o pedido)
+
+- [ ] 1.1 `infra/terraform/variables.tf`: `app_client_name` com
+  `default = "Forte Saúde"` — default versionado é o desta implantação
+  (design.md D1). Atualizar a descrição para dizer que este repositório é um
+  fork por cliente e que o default **é** o valor de produção, não um neutro.
+- [ ] 1.2 `.env.example`: `APP_CLIENT_NAME=Forte Saúde` (hoje `SETES`).
+- [ ] 1.3 `infra/terraform/terraform.tfvars.example`: descomentar
+  `app_client_name` com o valor real e remover o exemplo `SETES`.
+- [ ] 1.4 **Não tocar** `apps/web/src/auth/LoginPage.tsx` nem
+  `apps/web/src/shell/AppShell.tsx` (design.md D2) — a spec
+  `identidade-visual` proíbe literal no código da interface. Confirmar por
+  `git diff --stat` que nenhum componente React aparece no diff final.
+- [ ] 1.5 Fixtures de teste que usam `'SETES'` como valor de `clientName`
+  passam a `'Forte Saúde'`: `apps/web/src/__tests__/login.test.tsx`,
+  `apps/web/src/__tests__/shell-identidade-visual.test.tsx`. Coerência do fork —
+  as asserções não dependem do valor, e isso deve continuar verdade depois da
+  troca.
+
+## 2. Repositório autorizado no CI/CD
+
+- [ ] 2.1 `infra/terraform/variables.tf`: `github_repository` com
+  `default = "Inxell-Tecnologia/PapelHub_ForteSaude"`. É o valor que vira a
+  `attribute_condition` do Workload Identity Pool (`cicd.tf:27`) — com o default
+  antigo, nenhum deploy autentica, e o erro do STS não aponta a causa.
+- [ ] 2.2 **Não alterar `cicd.tf`** — a condição já deriva da variável; não há
+  literal de repositório em recurso nenhum.
+
+## 3. Endereço canônico do manual repontado (D5)
+
+- [ ] 3.1 `apps/api/src/config.ts`: `CANONICAL_MANUAL_URL` →
+  `https://inxell-tecnologia.github.io/PapelHub_ForteSaude/`.
+- [ ] 3.2 `docs/manual/mkdocs.yml`: `site_url` com **exatamente** o mesmo valor
+  de 3.1, no mesmo commit.
+- [ ] 3.3 Fixtures que repetem o endereço:
+  `apps/web/src/__tests__/shell-manual-do-usuario.test.tsx` e
+  `apps/web/src/__tests__/shell-painel-sobreposto.test.tsx`.
+- [ ] 3.4 **`apps/api/src/__tests__/config-manual-url.test.ts` não deve ser
+  alterado** e deve passar. Ele lê o `mkdocs.yml` e compara com a constante — se
+  precisar ser tocado, 3.1 e 3.2 divergiram.
+- [ ] 3.5 `app_manual_url` permanece **vazio** em `variables.tf` e comentado em
+  `terraform.tfvars.example`: o canônico já é o certo, e um override redundante
+  é mais um valor para divergir (design.md D5).
+
+## 4. Manual do usuário com os dados desta implantação
+
+- [ ] 4.1 `docs/manual/docs/a-tela.md`: o exemplo de identificação da organização
+  passa de `"SETES"` para `"Forte Saúde"`.
+- [ ] 4.2 `docs/manual/docs/index.md`: o bloco "Endereço desta implantação" deixa
+  de anunciar a URL do Cloud Run do cliente anterior. O valor real só é conhecido
+  na Fase 1 da seção 7 — deixar um marcador explícito e preencher no passo 7.6.2,
+  nunca manter o endereço antigo "até depois".
+- [ ] 4.3 Conferir que nenhuma outra página do manual cita `SETES`, `GDoc` ou a
+  URL antiga: `grep -rn "SETES\|GDoc\|gdoc-prod" docs/manual/`.
+- [ ] 4.4 Não formatar `docs/` com Prettier — está no `.prettierignore` de
+  propósito (prosa autoral).
+
+## 5. Prefixo de recursos GCP: `gdoc` → `papelhub` (D3, D4)
+
+- [ ] 5.1 `infra/terraform/variables.tf`: `app_name` `default = "papelhub"`
+  — **minúsculo**. `name_prefix` passa a `papelhub-prod`. Acrescentar à descrição
+  da variável a condição normativa: o prefixo é escolhível **antes** do primeiro
+  provisionamento e imutável depois dele (recriar bucket/Cloud SQL/Pub/Sub é
+  perda de dados, não renomeação).
+- [ ] 5.2 `infra/terraform/variables.tf`: `db_name` → `papelhub`, `db_user` →
+  `papelhub_app`. Nenhum `.sql`, `.ts`, `.yml` ou `.sh` referencia `gdoc_app`
+  (verificado) — reconfirmar com
+  `grep -rn "gdoc_app\|\"gdoc\"" --include=*.sql --include=*.ts --include=*.yml --include=*.sh .`
+  antes de fechar a tarefa.
+- [ ] 5.3 **Não alterar nenhum recurso `.tf`.** Todos derivam de
+  `local.name_prefix`; a troca é só de default. Confirmar que o diff de
+  `infra/terraform/` contém apenas `variables.tf`, os dois `.example` e o
+  `README.md`.
+- [ ] 5.4 `infra/terraform/terraform.tfvars.example`: `project_id` →
+  `fortesaude-papelhub`; comentários de exemplo de URL do Cloud Run deixam de
+  citar `gdoc-prod-api-…`; `bootstrap_admin_email = "admin@papelhub.com"`.
+- [ ] 5.5 `infra/terraform/backend.hcl.example`: `bucket` →
+  `fortesaude-papelhub-terraform-state`.
+- [ ] 5.6 `infra/terraform/README.md`: substituir todas as ocorrências de
+  `gdoc-prod-*` e de `NAME_PREFIX="gdoc-${ENVIRONMENT}"` pelo novo prefixo; na
+  seção "Bootstrap", a localização do bucket de state deste projeto é escolha
+  nova (o parágrafo atual registra uma decisão de **não mover** o bucket do
+  projeto anterior) — adotar `us-central1`, coerente com `var.region`, e reescrever
+  o parágrafo como escolha e não como herança; remover a afirmação "Aplicado
+  contra o projeto real `gdoc-502613`", que é de outra implantação.
+- [ ] 5.7 `CLAUDE.md`: reescrever a linha que registra `name_prefix = "gdoc"`
+  como decisão. A nova redação mantém a trava (renomear destrói e recria
+  recursos com dado) mas a posiciona como **trava pós-provisionamento**,
+  registrando o prefixo vigente `papelhub` e que a escolha só é livre antes do
+  primeiro `apply`. Manter congelados, com a razão, o scope `@gdoc/*`,
+  `gdoc_dev`/`gdoc_ci` e `gdoc-dev-bucket` (design.md D4).
+- [ ] 5.8 `README.md`: o parágrafo de identificadores internos acompanha 5.7.
+  Corrigir também o exemplo de login (`admin.global@gdoc.dev`) se ele estiver
+  apresentado como credencial de produção — é de dev e deve dizê-lo.
+- [ ] 5.9 Busca de resíduo em prosa:
+  `grep -rn "gdoc-prod" --include=*.md . | grep -v node_modules | grep -v changes/archive`
+  deve voltar vazio. `openspec/changes/archive/` é histórico imutável — **não**
+  tocar.
+
+## 6. Runbook de implantação versionado (D6)
+
+- [ ] 6.1 Criar `docs/runbook-implantacao.md`, em pt_BR, organizado nas seis
+  fases da seção 7 abaixo — a seção 7 é a especificação do conteúdo.
+- [ ] 6.2 Cada fase declara **o que passa a existir nela** e qual valor da fase
+  seguinte depende disso. As três circularidades aparecem nomeadas: bucket de
+  state anterior ao `init`; URL do Cloud Run anterior ao CORS e à audience do
+  Pub/Sub; imagem real anterior ao Job de bootstrap.
+- [ ] 6.3 Cada passo remete ao arquivo que o sustenta (`cicd.tf`,
+  `bootstrap_job.tf`, `deploy.yml`, …), para que o comando possa ser conferido
+  contra a fonte em vez da prosa.
+- [ ] 6.4 Seção "Armadilhas" com as três de falha silenciosa e o **sintoma** de
+  cada uma: as duas formas de URL no CORS; imagem antes da validação OIDC do
+  Pub/Sub; gate `no_prod_effect` do `deploy.yml` sem `workflow_dispatch`.
+- [ ] 6.5 Seção "Não mexer" com a tabela do envelope de capacidade (design.md
+  D8) e a razão: subir `api_max_instances` sem subir `db_tier` reproduz o
+  `429 Rate exceeded.`.
+- [ ] 6.6 Trazer integralmente o alerta de senha suja no Windows/PowerShell que
+  hoje vive em `infra/terraform/README.md`, incluindo o fato de que corrigir o
+  secret depois **não** reescreve a credencial (design.md D9).
+- [ ] 6.7 `README.md`: um link para o runbook na seção de produção.
+
+## 7. Execução pelo operador — checklist (fora do sandbox)
+
+> Valores desta implantação: projeto `fortesaude-papelhub`, região
+> `us-central1`, `name_prefix` `papelhub-prod`, admin inicial
+> `admin@papelhub.com`.
+
+### Fase 0 — pré-Terraform (Cloud Shell)
+
+- [ ] 7.0.1 Billing habilitado no projeto `fortesaude-papelhub` (console GCP →
+  Faturamento). Sem isso o `apply` falha ao habilitar as APIs.
+- [ ] 7.0.2 `gcloud config set project fortesaude-papelhub`
+- [ ] 7.0.3 Criar o bucket de state — o Terraform não pode criar o bucket onde
+  guarda o próprio state:
+  `gsutil mb -l us-central1 gs://fortesaude-papelhub-terraform-state` e
+  `gsutil versioning set on gs://fortesaude-papelhub-terraform-state`
+- [ ] 7.0.4 `cp backend.hcl.example backend.hcl` e
+  `cp terraform.tfvars.example terraform.tfvars`; conferir `project_id`,
+  `app_client_name` e `bootstrap_admin_email`.
+- [ ] 7.0.5 GitHub → Settings → Pages → **Source: GitHub Actions** (não "Deploy
+  from a branch"), senão o `deploy-pages@v4` do `docs.yml` falha.
+
+### Fase 1 — primeiro `terraform apply` (cria a URL do Cloud Run)
+
+- [ ] 7.1.1 `terraform init -backend-config=backend.hcl`
+- [ ] 7.1.2 `terraform plan` — conferir que **nada** será destruído (projeto
+  vazio) e que os nomes saem com `papelhub-prod`.
+- [ ] 7.1.3 `terraform apply`. A API sobe com a imagem placeholder
+  `us-docker.pkg.dev/cloudrun/container/hello` — esperado: o serviço existe, o
+  código ainda não.
+- [ ] 7.1.4 Guardar os outputs: `terraform output`. A partir daqui existem
+  `api_url`, `artifact_registry_repository`,
+  `github_actions_workload_identity_provider`,
+  `github_actions_deployer_service_account`, `migrate_job_name`.
+- [ ] 7.1.5 Registrar **as duas** formas de URL do serviço (console Cloud Run →
+  serviço `papelhub-prod-api`): `-hash-<região>.a.run.app` e
+  `-<nº-projeto>.<região>.run.app`. Ambas são necessárias na Fase 5.
+
+### Fase 2 — variáveis de repositório no GitHub
+
+- [ ] 7.2.1 GitHub → Settings → Secrets and variables → Actions → **Variables**
+  (não Secrets — o controle de acesso é a condição do WIF + IAM, não o sigilo
+  destes valores). Criar as sete: `GCP_PROJECT_ID` = `fortesaude-papelhub`,
+  `GCP_REGION` = `us-central1`, `GCP_ARTIFACT_REPOSITORY`,
+  `GCP_CLOUD_RUN_SERVICE` = `papelhub-prod-api`,
+  `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_DEPLOYER_SERVICE_ACCOUNT`,
+  `GCP_MIGRATE_JOB` = `papelhub-prod-migrate`.
+
+### Fase 3 — publicar a imagem real
+
+- [ ] 7.3.1 Integrar esta mudança na `main` (merge commit, nunca squash). O
+  merge toca `.env.example`, `apps/api/src/config.ts` e `infra/terraform/*.tf` —
+  **fora** do allowlist `no_prod_effect`, portanto o deploy prossegue.
+- [ ] 7.3.2 Acompanhar `CI` → `Deploy`. O workflow builda, empurra a imagem,
+  atualiza a imagem do Job de migração e executa `papelhub-prod-migrate` **antes**
+  do `gcloud run deploy`. Falha na migração aborta antes do deploy, por desenho.
+- [ ] 7.3.3 Se o `Deploy` tiver sido pulado ("no effect on production"), o
+  commit tocou só o allowlist. `deploy.yml` **não tem `workflow_dispatch`** —
+  re-rodar a execução pela UI do Actions ou levar uma alteração de código.
+- [ ] 7.3.4 Confirmar que o `docs.yml` publicou o manual em
+  `https://inxell-tecnologia.github.io/PapelHub_ForteSaude/` (o merge toca
+  `docs/manual/**`).
+
+### Fase 4 — administrador global inicial
+
+- [ ] 7.4.1 Gravar a senha como versão do secret — **nunca** em
+  `terraform.tfvars` nem no state:
+  `echo -n "<SENHA>" | gcloud secrets versions add papelhub-prod-bootstrap-admin-password --data-file=- --project=fortesaude-papelhub`
+  **No Windows/PowerShell não usar `echo -n`** — ver a seção de armadilhas do
+  runbook (6.6): grava bytes invisíveis, todo login vira 401, e corrigir o
+  secret depois não resolve.
+- [ ] 7.4.2 Conferir o tamanho gravado: deve ser exatamente o número de
+  caracteres da senha, sem `0D`/`0A` no fim.
+- [ ] 7.4.3 Executar o Job uma vez (idempotente; aplica migrações pendentes e
+  cria **só** o `global_admin`):
+  `gcloud run jobs execute papelhub-prod-bootstrap --project=fortesaude-papelhub --region=us-central1 --wait`
+- [ ] 7.4.4 Conferir nos logs do Job que o administrador foi criado, e não que
+  foi no-op por já existir.
+
+### Fase 5 — segundo `terraform apply` (CORS e Pub/Sub)
+
+- [ ] 7.5.1 `terraform.tfvars`: `cors_allowed_origins` com **as duas** formas de
+  URL de 7.1.5. Faltando uma, o upload falha com "Falha no envio." e erro de CORS
+  no console quando a SPA é aberta pela forma ausente.
+- [ ] 7.5.2 `terraform.tfvars`: `pubsub_push_audience` =
+  `<api_url>/internal/storage-events`. Só agora — a imagem com o validador OIDC
+  já está publicada (Fase 3); invertido, todo push válido vira 401.
+- [ ] 7.5.3 `terraform apply`
+- [ ] 7.5.4 Conferir que o `lifecycle.ignore_changes` preservou a imagem real do
+  serviço — o `apply` **não** deve reverter para a placeholder.
+
+### Fase 6 — validação funcional
+
+- [ ] 7.6.1 Abrir a URL do Cloud Run: a tela de login mostra a logomarca, o
+  título **PapelHub** e, abaixo, **Forte Saúde**. Conferir a acentuação; se
+  estiver corrompida, corrigir por
+  `gcloud run services update papelhub-prod-api --set-env-vars APP_CLIENT_NAME="Forte Saúde"`
+  — não exige rebuild (design.md D2).
+- [ ] 7.6.2 Com a URL confirmada, preencher o endereço desta implantação em
+  `docs/manual/docs/index.md` (tarefa 4.2) e integrar. Esse commit toca só
+  `docs/` — corretamente classificado como sem efeito em produção, e o `docs.yml`
+  republica o site.
+- [ ] 7.6.3 Entrar com `admin@papelhub.com`. Conferir: shell expandido mostra
+  **Forte Saúde** sob a marca; aba do navegador mostra `PapelHub - Forte Saúde`;
+  rodapé leva ao manual em `inxell-tecnologia.github.io/PapelHub_ForteSaude/`.
+- [ ] 7.6.4 Enviar um arquivo de teste — valida CORS (7.5.1), URL assinada e
+  reconciliação de cota pelo push do Pub/Sub (7.5.2). Conferir que o espaço usado
+  na tela de envio reflete o arquivo.
+- [ ] 7.6.5 Cadastrar as pessoas reais pela tela **Pessoas**. Confirmar que
+  **não** existem contas de demonstração (`colaborador.a@…`, `admin.a@…`) — o
+  seed é travado em produção, mas conferir é barato.
+
+## 8. Verificação
+
+- [ ] 8.1 `npm run lint && npm run build && npm run test` na raiz.
+- [ ] 8.2 `npm run format:check` — gate da CI. `docs/` e `openspec/` ficam fora
+  por `.prettierignore`; não formatá-los.
+- [ ] 8.3 `npm run test --workspace apps/api -- src/__tests__/config-manual-url.test.ts`
+  passa **sem** o arquivo ter sido alterado (tarefa 3.4).
+- [ ] 8.4 `cd infra/terraform && terraform fmt -check && terraform validate`
+  (`validate` não exige credencial).
+- [ ] 8.5 `git diff --stat` final: nenhum arquivo em `apps/web/src/` fora de
+  `__tests__/`; nenhum arquivo em `openspec/changes/archive/`; em
+  `infra/terraform/` apenas `variables.tf`, `terraform.tfvars.example`,
+  `backend.hcl.example` e `README.md`.
+- [ ] 8.6 `openspec validate implantacao-fortesaude --strict`
