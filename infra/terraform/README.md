@@ -346,13 +346,33 @@ recriadas, mas não remove o que já foi criado antes dela existir.
   só a do Job de migração.** `.github/workflows/deploy.yml` faz
   `gcloud run deploy` do **serviço** (API) a cada push em `main` e, antes
   disso, `gcloud run jobs update --image` + `execute --wait` no Job de
-  migração (abaixo). Os demais Jobs (expurgo, bootstrap) só pegam uma imagem
-  nova quando o Terraform for reaplicado (o `lifecycle.ignore_changes` em
-  `containers[0].image` evita que um `apply` de rotina reverta uma imagem já
-  publicada, mas também significa que eles não avançam sozinhos). Mantê-los
-  atualizados hoje exige `terraform apply` manual apontando `var.api_image`
-  para a tag desejada, ou estender o CI/CD para também rodar
-  `gcloud run jobs deploy` neles — fora de escopo desta mudança.
+  migração (abaixo). Os demais Jobs (expurgo, avisos, bootstrap) **nunca**
+  avançam sozinhos: o `lifecycle.ignore_changes` em `containers[0].image`
+  existe para que um `apply` de rotina não reverta a imagem publicada pelo
+  CI/CD, mas ignora o atributo nos **dois** sentidos.
+
+  **Correção (change `implantacao-fortesaude`):** este parágrafo afirmava que
+  `terraform apply` apontando `var.api_image` para a tag desejada resolveria.
+  **Não resolve** — com `ignore_changes`, mudar a variável não produz diff
+  algum. O único caminho hoje é `gcloud run jobs update --image`, um por Job:
+
+  ```bash
+  IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${NAME_PREFIX}-api/api"
+  for J in bootstrap trash-purge notify-grants; do
+    gcloud run jobs update "${NAME_PREFIX}-${J}" --image "${IMAGE}:latest" \
+      --project="$PROJECT_ID" --region="$REGION"
+  done
+  ```
+
+  O erro que isto evita apareceu no provisionamento do Forte Saúde: o Job de
+  bootstrap, ainda com a imagem placeholder, falhou com `The container exited
+with an error` / `exit code: 1` — o container `cloudrun/container/hello` não
+  tem Node nem o arquivo do entrypoint. Para os Jobs **agendados** o sintoma é
+  pior porque é silencioso: falham de madrugada e ninguém olha.
+
+  Estender o CI/CD para atualizar os quatro Jobs continua sendo a solução
+  durável, e segue fora de escopo.
+
 - **Job de migração de banco (change `deploy-migrations-e-docs-only`).**
   `${local.name_prefix}-migrate` (`migrate_job.tf`) roda a mesma imagem/SA/
   integração Cloud SQL da API, entrypoint `apps/api/dist/db/migrate.js`

@@ -137,38 +137,38 @@
 
 ### Fase 0 — pré-Terraform (Cloud Shell)
 
-- [ ] 7.0.1 Billing habilitado no projeto `fortesaude-papelhub` (console GCP →
+- [x] 7.0.1 Billing habilitado no projeto `fortesaude-papelhub` (console GCP →
   Faturamento). Sem isso o `apply` falha ao habilitar as APIs.
-- [ ] 7.0.2 `gcloud config set project fortesaude-papelhub`
-- [ ] 7.0.3 Criar o bucket de state — o Terraform não pode criar o bucket onde
+- [x] 7.0.2 `gcloud config set project fortesaude-papelhub`
+- [x] 7.0.3 Criar o bucket de state — o Terraform não pode criar o bucket onde
   guarda o próprio state:
   `gsutil mb -l us-central1 gs://fortesaude-papelhub-terraform-state` e
   `gsutil versioning set on gs://fortesaude-papelhub-terraform-state`
-- [ ] 7.0.4 `cp backend.hcl.example backend.hcl` e
+- [x] 7.0.4 `cp backend.hcl.example backend.hcl` e
   `cp terraform.tfvars.example terraform.tfvars`; conferir `project_id`,
   `app_client_name` e `bootstrap_admin_email`.
-- [ ] 7.0.5 GitHub → Settings → Pages → **Source: GitHub Actions** (não "Deploy
+- [x] 7.0.5 GitHub → Settings → Pages → **Source: GitHub Actions** (não "Deploy
   from a branch"), senão o `deploy-pages@v4` do `docs.yml` falha.
 
 ### Fase 1 — primeiro `terraform apply` (cria a URL do Cloud Run)
 
-- [ ] 7.1.1 `terraform init -backend-config=backend.hcl`
-- [ ] 7.1.2 `terraform plan` — conferir que **nada** será destruído (projeto
+- [x] 7.1.1 `terraform init -backend-config=backend.hcl`
+- [x] 7.1.2 `terraform plan` — conferir que **nada** será destruído (projeto
   vazio) e que os nomes saem com `papelhub-prod`.
-- [ ] 7.1.3 `terraform apply`. A API sobe com a imagem placeholder
+- [x] 7.1.3 `terraform apply`. A API sobe com a imagem placeholder
   `us-docker.pkg.dev/cloudrun/container/hello` — esperado: o serviço existe, o
   código ainda não.
-- [ ] 7.1.4 Guardar os outputs: `terraform output`. A partir daqui existem
+- [x] 7.1.4 Guardar os outputs: `terraform output`. A partir daqui existem
   `api_url`, `artifact_registry_repository`,
   `github_actions_workload_identity_provider`,
   `github_actions_deployer_service_account`, `migrate_job_name`.
-- [ ] 7.1.5 Registrar **as duas** formas de URL do serviço (console Cloud Run →
+- [x] 7.1.5 Registrar **as duas** formas de URL do serviço (console Cloud Run →
   serviço `papelhub-prod-api`): `-hash-<região>.a.run.app` e
   `-<nº-projeto>.<região>.run.app`. Ambas são necessárias na Fase 5.
 
 ### Fase 2 — variáveis de repositório no GitHub
 
-- [ ] 7.2.1 GitHub → Settings → Secrets and variables → Actions → **Variables**
+- [x] 7.2.1 GitHub → Settings → Secrets and variables → Actions → **Variables**
   (não Secrets — o controle de acesso é a condição do WIF + IAM, não o sigilo
   destes valores). Criar as sete: `GCP_PROJECT_ID` = `fortesaude-papelhub`,
   `GCP_REGION` = `us-central1`, `GCP_ARTIFACT_REPOSITORY`,
@@ -178,34 +178,45 @@
 
 ### Fase 3 — publicar a imagem real
 
-- [ ] 7.3.1 Integrar esta mudança na `main` (merge commit, nunca squash). O
+- [x] 7.3.1 Integrar esta mudança na `main` (merge commit, nunca squash). O
   merge toca `.env.example`, `apps/api/src/config.ts` e `infra/terraform/*.tf` —
   **fora** do allowlist `no_prod_effect`, portanto o deploy prossegue.
-- [ ] 7.3.2 Acompanhar `CI` → `Deploy`. O workflow builda, empurra a imagem,
+- [x] 7.3.2 Acompanhar `CI` → `Deploy`. O workflow builda, empurra a imagem,
   atualiza a imagem do Job de migração e executa `papelhub-prod-migrate` **antes**
   do `gcloud run deploy`. Falha na migração aborta antes do deploy, por desenho.
-- [ ] 7.3.3 Se o `Deploy` tiver sido pulado ("no effect on production"), o
+- [x] 7.3.2a _Execução real (Deploy #1, disparo manual, commit `a9eef32`):_
+  gate 4s → `auth@v2` **sucesso** (o WIF aceitou o repositório — valida a tarefa
+  2.1) → build 52s → push 14s → update do Job de migração 4s → **migrações
+  4m35s** (primeira aplicação do schema num banco vazio) → deploy no Cloud Run
+  12s. Todos os passos verdes. Duas anotações amarelas informativas, sem efeito:
+  depreciação do Node 20 no `actions/checkout@v4` e migração do label
+  `ubuntu-latest` para Ubuntu 26 em 19/10/2026 — manutenção futura, não falha.
+- [x] 7.3.3 Se o `Deploy` tiver sido pulado ("no effect on production"), o
   commit tocou só o allowlist. `deploy.yml` **não tem `workflow_dispatch`** —
   re-rodar a execução pela UI do Actions ou levar uma alteração de código.
-- [ ] 7.3.4 Confirmar que o `docs.yml` publicou o manual em
+- [x] 7.3.4 Confirmar que o `docs.yml` publicou o manual em
   `https://inxell-tecnologia.github.io/PapelHub_ForteSaude/` (o merge toca
   `docs/manual/**`).
 
 ### Fase 4 — administrador global inicial
 
-- [ ] 7.4.1 Gravar a senha como versão do secret — **nunca** em
-  `terraform.tfvars` nem no state:
-  `echo -n "<SENHA>" | gcloud secrets versions add papelhub-prod-bootstrap-admin-password --data-file=- --project=fortesaude-papelhub`
-  **No Windows/PowerShell não usar `echo -n`** — ver a seção de armadilhas do
-  runbook (6.6): grava bytes invisíveis, todo login vira 401, e corrigir o
-  secret depois não resolve.
-- [ ] 7.4.2 Conferir o tamanho gravado: deve ser exatamente o número de
-  caracteres da senha, sem `0D`/`0A` no fim.
-- [ ] 7.4.3 Executar o Job uma vez (idempotente; aplica migrações pendentes e
+- [x] 7.4.1 ~~Gravar a senha como versão do secret~~ — **movido para a Fase 1a**
+  pelo defeito 10.1: o Cloud Run resolve `version = "latest"` ao CRIAR o Job, e
+  sem versão o `apply` da Fase 1 não concluía. Gravada lá, e confirmada na
+  prática: o Job `papelhub-prod-bootstrap` só pôde ser criado porque o `latest`
+  resolveu.
+- [x] 7.4.2 ~~Conferir o tamanho gravado~~ — idem, feito na Fase 1a. Aqui resta
+  apenas confirmar que a versão existe:
+  `gcloud secrets versions list papelhub-prod-bootstrap-admin-password --project=fortesaude-papelhub`
+- [x] 7.4.3 Executar o Job uma vez (idempotente; aplica migrações pendentes e
   cria **só** o `global_admin`):
   `gcloud run jobs execute papelhub-prod-bootstrap --project=fortesaude-papelhub --region=us-central1 --wait`
-- [ ] 7.4.4 Conferir nos logs do Job que o administrador foi criado, e não que
+- [x] 7.4.4 Conferir nos logs do Job que o administrador foi criado, e não que
   foi no-op por já existir.
+  _Execução `papelhub-prod-bootstrap-g8hmt`: sucesso, 1/1 completo, depois de
+  `jobs update --image` (defeito 10.9). Foi **criação**, não no-op: a execução
+  anterior (`-bbhkf`) falhou no arranque do container, antes de qualquer código
+  rodar, então não havia `global_admin` para o idempotente encontrar._
 
 ### Fase 5 — segundo `terraform apply` (CORS e Pub/Sub)
 
@@ -377,3 +388,33 @@ secret e as concessões já existiam.
   Runbook: Armadilha 4 nova, Armadilha 3 atualizada com a saída que passou a
   existir, e o passo 7 da Fase 0 passa a mandar habilitar os workflows **antes**
   de qualquer push na `main`.
+- [x] 10.9 **Jobs presos na imagem placeholder, e um caminho de entrypoint
+  errado que isso escondia.** O `gcloud run jobs execute papelhub-prod-bootstrap`
+  falhou com `The container exited with an error` / `exit code: 1`. Causa: o Job
+  nasceu na Fase 1 com `var.api_image` = `us-docker.pkg.dev/cloudrun/container/hello`
+  (placeholder) e **o CI/CD só atualiza o Job de migração** — rodou
+  `node apps/api/dist/db/bootstrap.js` num container que não tem Node nem o
+  arquivo. Vale igualmente para `trash-purge` e `notify-grants`.
+  **Runbook:** a Fase 4 ganha o passo obrigatório de `gcloud run jobs update
+  --image` antes do `execute`, e um passo novo para os dois Jobs agendados —
+  cujo sintoma é pior por ser silencioso (falham de madrugada, ninguém olha).
+  **Afirmação incorreta corrigida** em `infra/terraform/README.md`: dizia que
+  `terraform apply` apontando `var.api_image` manteria os Jobs atualizados.
+  Não mantém — `ignore_changes` ignora o atributo nos **dois** sentidos, então
+  mudar a variável não gera diff. `gcloud run jobs update --image` é o único
+  caminho hoje.
+- [x] 10.10 **Entrypoint errado nos dois Jobs agendados (defeito latente).**
+  `scheduler.tf` usava `dist/jobs/purge-trash.js` e
+  `dist/jobs/notify-expiring-grants.js`, mas o WORKDIR do Dockerfile é `/app` e
+  o build da API é copiado para `/app/apps/api/dist` — os caminhos corretos são
+  `apps/api/dist/jobs/*.js`, a mesma forma do `CMD` e dos Jobs de migração e de
+  bootstrap. **Nunca deu sintoma** porque os dois Jobs estavam com a imagem
+  placeholder e falhavam antes de chegar ao módulo; assim que ganhassem a imagem
+  real (10.9) passariam a falhar com "Cannot find module" às 03:00 e 03:30,
+  todas as noites, em silêncio. Corrigido — exige `terraform apply` para
+  aplicar, já que `ignore_changes` cobre só a imagem, não os `args`.
+- [ ] 10.11 **Estender o CI/CD para atualizar a imagem dos quatro Jobs.** Hoje
+  só o de migração avança sozinho, e os outros três dependem de `gcloud` manual
+  a cada deploy — ou seja, divergem da imagem do serviço por padrão. Fora de
+  escopo desta fatia (já era pendência registrada no README da fundação), mas
+  agora com custo conhecido: foi o que quebrou a Fase 4.

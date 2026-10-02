@@ -51,8 +51,15 @@ resource "google_cloud_run_v2_job" "trash_purge" {
 
       containers {
         image   = var.api_image
+        # Caminho relativo ao WORKDIR `/app` do Dockerfile, que copia o build
+        # da API para `/app/apps/api/dist` — mesma forma do CMD
+        # (`apps/api/dist/server.js`) e dos Jobs de migração e bootstrap.
+        # Estava `dist/jobs/...`, que não existe: o Job falharia com "Cannot
+        # find module" TODA noite, e passou despercebido porque Job com a
+        # imagem placeholder falha antes de chegar ao módulo (change
+        # implantacao-fortesaude).
         command = ["node"]
-        args    = ["dist/jobs/purge-trash.js"]
+        args    = ["apps/api/dist/jobs/purge-trash.js"]
 
         resources {
           limits = {
@@ -241,7 +248,7 @@ resource "google_cloud_run_v2_job" "notify_expiring_grants" {
       containers {
         image   = var.api_image
         command = ["node"]
-        args    = ["dist/jobs/notify-expiring-grants.js"]
+        args    = ["apps/api/dist/jobs/notify-expiring-grants.js"]
 
         resources {
           limits = {
