@@ -10,14 +10,26 @@ Recursos provisionados: Cloud Run (API), Cloud SQL (Postgres), Cloud Storage
 Manager, Artifact Registry, Pub/Sub (reconciliação de cota) e Cloud
 Scheduler → Cloud Run Job (expurgo diário da lixeira, 03:00).
 
-**Aplicado** contra o projeto real `gdoc-502613` (ambiente de
-desenvolvimento com `gcloud`/Terraform configurados) — 53 recursos criados,
-0 destruídos. Escrito e revisado originalmente num ambiente sandbox sem
-projeto GCP nem credenciais, onde só `terraform validate`/`fmt` rodavam;
-`plan`/`apply` aconteceram depois, num ambiente com acesso real ao projeto
-(ver `openspec/changes/archive/2026-07-16-bootstrap-infrastructure/tasks.md`, seção 8, para os
-três ajustes que só a API real revelou). A API ainda sobe com a imagem
+Esta implantação é do cliente **Forte Saúde**, no projeto
+`fortesaude-papelhub`, com `name_prefix` = `papelhub-prod` (change
+`implantacao-fortesaude`). O repositório é um **fork por cliente**: os valores
+de implantação já vêm como _default_ em `variables.tf`, e
+`terraform.tfvars` guarda só o que é segredo ou o que não existe antes do
+primeiro `apply`.
+
+O módulo foi escrito e revisado num ambiente sandbox sem projeto GCP nem
+credenciais, onde só `terraform validate`/`fmt` rodam; `plan`/`apply` acontecem
+num ambiente com acesso real ao projeto (ver
+`openspec/changes/archive/2026-07-16-bootstrap-infrastructure/tasks.md`, seção 8,
+para os três ajustes que só a API real revelou). A API sobe com a imagem
 placeholder pública até o CI/CD publicar a imagem real — ver "Uso" abaixo.
+
+> **O procedimento completo de implantação, em seis fases, está em
+> [`docs/runbook-implantacao.md`](../../docs/runbook-implantacao.md).** Este
+> README é referência de **decisões**; o runbook é o **procedimento**. Para
+> levar um projeto vazio ao ar, siga o runbook — ele existe porque as
+> dependências entre os passos são circulares e três condições falham em
+> silêncio.
 
 ## Pré-requisitos
 
@@ -32,17 +44,20 @@ O estado remoto precisa de um bucket que já exista antes do `terraform init`
 — o Terraform não pode criar o bucket em que vai guardar o próprio estado.
 
 ```bash
-PROJECT_ID="gdoc-prod-123456"   # ajustar
+PROJECT_ID="fortesaude-papelhub"
 gcloud config set project "$PROJECT_ID"
 
 # A localização do bucket de state é INDEPENDENTE de var.region (o state são
-# KBs, custo irrelevante) e não é gerenciada por este Terraform. O bucket de
-# state do projeto de produção permanece em `southamerica-east1` por decisão
-# (design.md D5 do change migra-infra-us-central1): movê-lo exigiria recriar
-# bucket + copiar objetos + editar backend.hcl + `init -migrate-state` durante
-# a operação mais destrutiva do projeto, sem retorno. Só os recursos regionais
-# do app é que migraram para `us-central1`.
-gsutil mb -l southamerica-east1 "gs://${PROJECT_ID}-terraform-state"
+# KBs, custo irrelevante) e não é gerenciada por este Terraform. Esta
+# implantação nasceu com o bucket de state em `us-central1`, coerente com
+# `var.region` — escolha feita no provisionamento inicial, não herança.
+#
+# Nota para quem vier de outra implantação deste produto: lá o bucket de state
+# ficou em `southamerica-east1` porque PERMANECEU onde nasceu (design.md D5 do
+# change migra-infra-us-central1) — movê-lo exigiria recriar bucket + copiar
+# objetos + editar backend.hcl + `init -migrate-state` durante a operação mais
+# destrutiva do projeto, sem retorno. Não é um requisito de região do state.
+gsutil mb -l us-central1 "gs://${PROJECT_ID}-terraform-state"
 gsutil versioning set on "gs://${PROJECT_ID}-terraform-state"
 ```
 
@@ -112,9 +127,10 @@ desenvolvimento (`npm run seed`) se recusa a rodar quando `NODE_ENV=production`
 (ver `openspec/changes/archive/2026-07-22-bootstrap-admin-producao/design.md`).
 
 ```bash
-PROJECT_ID="gdoc-prod-123456"   # ajustar
+PROJECT_ID="fortesaude-papelhub"
+REGION="us-central1"
 ENVIRONMENT="prod"
-NAME_PREFIX="gdoc-${ENVIRONMENT}"
+NAME_PREFIX="papelhub-${ENVIRONMENT}"
 
 # 1. Cria a versão do secret com a senha real do administrador (só o
 #    container é gerenciado pelo Terraform — a senha nunca fica no state).
@@ -163,8 +179,9 @@ gcloud run jobs execute "${NAME_PREFIX}-bootstrap" \
 Depois de logar com essa conta na URL de produção, cadastre as pessoas reais
 pela tela **Pessoas** e, se este projeto já teve um `npm run seed` rodado
 antes desta mudança existir, exclua/desative pela mesma tela as eventuais
-contas de demonstração (`colaborador.a@gdoc.dev`, `admin.a@gdoc.dev`,
-`colaborador.b@gdoc.dev`) — a trava de produção no seed impede que elas sejam
+contas de demonstração do seed de desenvolvimento (`colaborador.a@gdoc.dev`,
+`admin.a@gdoc.dev`, `colaborador.b@gdoc.dev` — endereços de dev, não desta
+implantação) — a trava de produção no seed impede que elas sejam
 recriadas, mas não remove o que já foi criado antes dela existir.
 
 ## Decisões que valem conhecer antes de mexer

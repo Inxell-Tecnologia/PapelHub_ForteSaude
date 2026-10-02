@@ -9,7 +9,12 @@ por dentro.
     O endereço abaixo é o desta implantação específica do PapelHub — não o endereço
     único do produto. Cada organização pode ter o seu próprio.
 
-    **https://gdoc-prod-api-hmwigy67mq-uc.a.run.app/**
+    <!-- A PREENCHER na Fase 6 da implantação (docs/runbook-implantacao.md,
+         passo 7.6.2 do change implantacao-fortesaude): a URL do serviço Cloud
+         Run só passa a existir depois do primeiro `terraform apply`. Substituir
+         a linha abaixo pelo endereço real e integrar — o commit toca só docs/ e
+         republica o site. NÃO reaproveitar o endereço de outra implantação. -->
+    **(endereço a ser informado quando a implantação entrar no ar)**
 
 Use um navegador atualizado (Chrome, Edge, Firefox ou Safari). Não é preciso instalar
 nada.

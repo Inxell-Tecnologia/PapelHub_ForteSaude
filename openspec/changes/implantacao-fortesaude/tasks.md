@@ -7,18 +7,18 @@
 
 ## 1. Identificação do cliente (o pedido)
 
-- [ ] 1.1 `infra/terraform/variables.tf`: `app_client_name` com
+- [x] 1.1 `infra/terraform/variables.tf`: `app_client_name` com
   `default = "Forte Saúde"` — default versionado é o desta implantação
   (design.md D1). Atualizar a descrição para dizer que este repositório é um
   fork por cliente e que o default **é** o valor de produção, não um neutro.
-- [ ] 1.2 `.env.example`: `APP_CLIENT_NAME=Forte Saúde` (hoje `SETES`).
-- [ ] 1.3 `infra/terraform/terraform.tfvars.example`: descomentar
+- [x] 1.2 `.env.example`: `APP_CLIENT_NAME=Forte Saúde` (hoje `SETES`).
+- [x] 1.3 `infra/terraform/terraform.tfvars.example`: descomentar
   `app_client_name` com o valor real e remover o exemplo `SETES`.
-- [ ] 1.4 **Não tocar** `apps/web/src/auth/LoginPage.tsx` nem
+- [x] 1.4 **Não tocar** `apps/web/src/auth/LoginPage.tsx` nem
   `apps/web/src/shell/AppShell.tsx` (design.md D2) — a spec
   `identidade-visual` proíbe literal no código da interface. Confirmar por
   `git diff --stat` que nenhum componente React aparece no diff final.
-- [ ] 1.5 Fixtures de teste que usam `'SETES'` como valor de `clientName`
+- [x] 1.5 Fixtures de teste que usam `'SETES'` como valor de `clientName`
   passam a `'Forte Saúde'`: `apps/web/src/__tests__/login.test.tsx`,
   `apps/web/src/__tests__/shell-identidade-visual.test.tsx`. Coerência do fork —
   as asserções não dependem do valor, e isso deve continuar verdade depois da
@@ -26,105 +26,108 @@
 
 ## 2. Repositório autorizado no CI/CD
 
-- [ ] 2.1 `infra/terraform/variables.tf`: `github_repository` com
+- [x] 2.1 `infra/terraform/variables.tf`: `github_repository` com
   `default = "Inxell-Tecnologia/PapelHub_ForteSaude"`. É o valor que vira a
   `attribute_condition` do Workload Identity Pool (`cicd.tf:27`) — com o default
   antigo, nenhum deploy autentica, e o erro do STS não aponta a causa.
-- [ ] 2.2 **Não alterar `cicd.tf`** — a condição já deriva da variável; não há
+- [x] 2.2 **Não alterar `cicd.tf`** — a condição já deriva da variável; não há
   literal de repositório em recurso nenhum.
 
 ## 3. Endereço canônico do manual repontado (D5)
 
-- [ ] 3.1 `apps/api/src/config.ts`: `CANONICAL_MANUAL_URL` →
+- [x] 3.1 `apps/api/src/config.ts`: `CANONICAL_MANUAL_URL` →
   `https://inxell-tecnologia.github.io/PapelHub_ForteSaude/`.
-- [ ] 3.2 `docs/manual/mkdocs.yml`: `site_url` com **exatamente** o mesmo valor
+- [x] 3.2 `docs/manual/mkdocs.yml`: `site_url` com **exatamente** o mesmo valor
   de 3.1, no mesmo commit.
-- [ ] 3.3 Fixtures que repetem o endereço:
+- [x] 3.3 Fixtures que repetem o endereço:
   `apps/web/src/__tests__/shell-manual-do-usuario.test.tsx` e
   `apps/web/src/__tests__/shell-painel-sobreposto.test.tsx`.
-- [ ] 3.4 **`apps/api/src/__tests__/config-manual-url.test.ts` não deve ser
+- [x] 3.4 **`apps/api/src/__tests__/config-manual-url.test.ts` não deve ser
   alterado** e deve passar. Ele lê o `mkdocs.yml` e compara com a constante — se
   precisar ser tocado, 3.1 e 3.2 divergiram.
-- [ ] 3.5 `app_manual_url` permanece **vazio** em `variables.tf` e comentado em
+- [x] 3.5 `app_manual_url` permanece **vazio** em `variables.tf` e comentado em
   `terraform.tfvars.example`: o canônico já é o certo, e um override redundante
   é mais um valor para divergir (design.md D5).
 
 ## 4. Manual do usuário com os dados desta implantação
 
-- [ ] 4.1 `docs/manual/docs/a-tela.md`: o exemplo de identificação da organização
+- [x] 4.1 `docs/manual/docs/a-tela.md`: o exemplo de identificação da organização
   passa de `"SETES"` para `"Forte Saúde"`.
-- [ ] 4.2 `docs/manual/docs/index.md`: o bloco "Endereço desta implantação" deixa
+- [x] 4.2 `docs/manual/docs/index.md`: o bloco "Endereço desta implantação" deixa
   de anunciar a URL do Cloud Run do cliente anterior. O valor real só é conhecido
   na Fase 1 da seção 7 — deixar um marcador explícito e preencher no passo 7.6.2,
   nunca manter o endereço antigo "até depois".
-- [ ] 4.3 Conferir que nenhuma outra página do manual cita `SETES`, `GDoc` ou a
+- [x] 4.3 Conferir que nenhuma outra página do manual cita `SETES`, `GDoc` ou a
   URL antiga: `grep -rn "SETES\|GDoc\|gdoc-prod" docs/manual/`.
-- [ ] 4.4 Não formatar `docs/` com Prettier — está no `.prettierignore` de
+- [x] 4.4 Não formatar `docs/` com Prettier — está no `.prettierignore` de
   propósito (prosa autoral).
 
 ## 5. Prefixo de recursos GCP: `gdoc` → `papelhub` (D3, D4)
 
-- [ ] 5.1 `infra/terraform/variables.tf`: `app_name` `default = "papelhub"`
+- [x] 5.1 `infra/terraform/variables.tf`: `app_name` `default = "papelhub"`
   — **minúsculo**. `name_prefix` passa a `papelhub-prod`. Acrescentar à descrição
   da variável a condição normativa: o prefixo é escolhível **antes** do primeiro
   provisionamento e imutável depois dele (recriar bucket/Cloud SQL/Pub/Sub é
   perda de dados, não renomeação).
-- [ ] 5.2 `infra/terraform/variables.tf`: `db_name` → `papelhub`, `db_user` →
+- [x] 5.2 `infra/terraform/variables.tf`: `db_name` → `papelhub`, `db_user` →
   `papelhub_app`. Nenhum `.sql`, `.ts`, `.yml` ou `.sh` referencia `gdoc_app`
   (verificado) — reconfirmar com
   `grep -rn "gdoc_app\|\"gdoc\"" --include=*.sql --include=*.ts --include=*.yml --include=*.sh .`
   antes de fechar a tarefa.
-- [ ] 5.3 **Não alterar nenhum recurso `.tf`.** Todos derivam de
+- [x] 5.3 **Não alterar nenhum recurso `.tf`.** Todos derivam de
   `local.name_prefix`; a troca é só de default. Confirmar que o diff de
   `infra/terraform/` contém apenas `variables.tf`, os dois `.example` e o
   `README.md`.
-- [ ] 5.4 `infra/terraform/terraform.tfvars.example`: `project_id` →
+- [x] 5.4 `infra/terraform/terraform.tfvars.example`: `project_id` →
   `fortesaude-papelhub`; comentários de exemplo de URL do Cloud Run deixam de
   citar `gdoc-prod-api-…`; `bootstrap_admin_email = "admin@papelhub.com"`.
-- [ ] 5.5 `infra/terraform/backend.hcl.example`: `bucket` →
+- [x] 5.5 `infra/terraform/backend.hcl.example`: `bucket` →
   `fortesaude-papelhub-terraform-state`.
-- [ ] 5.6 `infra/terraform/README.md`: substituir todas as ocorrências de
+- [x] 5.6 `infra/terraform/README.md`: substituir todas as ocorrências de
   `gdoc-prod-*` e de `NAME_PREFIX="gdoc-${ENVIRONMENT}"` pelo novo prefixo; na
   seção "Bootstrap", a localização do bucket de state deste projeto é escolha
   nova (o parágrafo atual registra uma decisão de **não mover** o bucket do
   projeto anterior) — adotar `us-central1`, coerente com `var.region`, e reescrever
   o parágrafo como escolha e não como herança; remover a afirmação "Aplicado
   contra o projeto real `gdoc-502613`", que é de outra implantação.
-- [ ] 5.7 `CLAUDE.md`: reescrever a linha que registra `name_prefix = "gdoc"`
+- [x] 5.7 `CLAUDE.md`: reescrever a linha que registra `name_prefix = "gdoc"`
   como decisão. A nova redação mantém a trava (renomear destrói e recria
   recursos com dado) mas a posiciona como **trava pós-provisionamento**,
   registrando o prefixo vigente `papelhub` e que a escolha só é livre antes do
   primeiro `apply`. Manter congelados, com a razão, o scope `@gdoc/*`,
   `gdoc_dev`/`gdoc_ci` e `gdoc-dev-bucket` (design.md D4).
-- [ ] 5.8 `README.md`: o parágrafo de identificadores internos acompanha 5.7.
+- [x] 5.8 `README.md`: o parágrafo de identificadores internos acompanha 5.7.
   Corrigir também o exemplo de login (`admin.global@gdoc.dev`) se ele estiver
   apresentado como credencial de produção — é de dev e deve dizê-lo.
-- [ ] 5.9 Busca de resíduo em prosa:
+  _Verificado: a seção "Prova de fundação ponta a ponta" já declara "o seed de
+  dev cria alguns", então a condicional não se aplicou — nada a corrigir ali.
+  O endereço canônico do manual nessa mesma página foi repontado (tarefa 3)._
+- [x] 5.9 Busca de resíduo em prosa:
   `grep -rn "gdoc-prod" --include=*.md . | grep -v node_modules | grep -v changes/archive`
   deve voltar vazio. `openspec/changes/archive/` é histórico imutável — **não**
   tocar.
 
 ## 6. Runbook de implantação versionado (D6)
 
-- [ ] 6.1 Criar `docs/runbook-implantacao.md`, em pt_BR, organizado nas seis
+- [x] 6.1 Criar `docs/runbook-implantacao.md`, em pt_BR, organizado nas seis
   fases da seção 7 abaixo — a seção 7 é a especificação do conteúdo.
-- [ ] 6.2 Cada fase declara **o que passa a existir nela** e qual valor da fase
+- [x] 6.2 Cada fase declara **o que passa a existir nela** e qual valor da fase
   seguinte depende disso. As três circularidades aparecem nomeadas: bucket de
   state anterior ao `init`; URL do Cloud Run anterior ao CORS e à audience do
   Pub/Sub; imagem real anterior ao Job de bootstrap.
-- [ ] 6.3 Cada passo remete ao arquivo que o sustenta (`cicd.tf`,
+- [x] 6.3 Cada passo remete ao arquivo que o sustenta (`cicd.tf`,
   `bootstrap_job.tf`, `deploy.yml`, …), para que o comando possa ser conferido
   contra a fonte em vez da prosa.
-- [ ] 6.4 Seção "Armadilhas" com as três de falha silenciosa e o **sintoma** de
+- [x] 6.4 Seção "Armadilhas" com as três de falha silenciosa e o **sintoma** de
   cada uma: as duas formas de URL no CORS; imagem antes da validação OIDC do
   Pub/Sub; gate `no_prod_effect` do `deploy.yml` sem `workflow_dispatch`.
-- [ ] 6.5 Seção "Não mexer" com a tabela do envelope de capacidade (design.md
+- [x] 6.5 Seção "Não mexer" com a tabela do envelope de capacidade (design.md
   D8) e a razão: subir `api_max_instances` sem subir `db_tier` reproduz o
   `429 Rate exceeded.`.
-- [ ] 6.6 Trazer integralmente o alerta de senha suja no Windows/PowerShell que
+- [x] 6.6 Trazer integralmente o alerta de senha suja no Windows/PowerShell que
   hoje vive em `infra/terraform/README.md`, incluindo o fato de que corrigir o
   secret depois **não** reescreve a credencial (design.md D9).
-- [ ] 6.7 `README.md`: um link para o runbook na seção de produção.
+- [x] 6.7 `README.md`: um link para o runbook na seção de produção.
 
 ## 7. Execução pelo operador — checklist (fora do sandbox)
 
@@ -239,15 +242,39 @@
 
 ## 8. Verificação
 
-- [ ] 8.1 `npm run lint && npm run build && npm run test` na raiz.
-- [ ] 8.2 `npm run format:check` — gate da CI. `docs/` e `openspec/` ficam fora
+- [x] 8.1 `npm run lint && npm run build && npm run test` na raiz.
+- [x] 8.2 `npm run format:check` — gate da CI. `docs/` e `openspec/` ficam fora
   por `.prettierignore`; não formatá-los.
-- [ ] 8.3 `npm run test --workspace apps/api -- src/__tests__/config-manual-url.test.ts`
+- [x] 8.3 `npm run test --workspace apps/api -- src/__tests__/config-manual-url.test.ts`
   passa **sem** o arquivo ter sido alterado (tarefa 3.4).
-- [ ] 8.4 `cd infra/terraform && terraform fmt -check && terraform validate`
+- [x] 8.4 `cd infra/terraform && terraform fmt -check && terraform validate`
   (`validate` não exige credencial).
-- [ ] 8.5 `git diff --stat` final: nenhum arquivo em `apps/web/src/` fora de
+  _O binário `terraform` **não existe** neste sandbox (config.yaml: dev roda sem
+  GCP). Substituto executado: parse dos 19 `.tf` com `python-hcl2` (todos OK) e
+  conferência dos defaults efetivos lidos da árvore sintática — `app_name`
+  minúsculo, `name_prefix` = `papelhub-prod`, envelope 8×2=16 contra 25.
+  **Rodar `fmt -check` e `validate` de verdade na Fase 1, antes do `plan`.**_
+- [x] 8.5 `git diff --stat` final: nenhum arquivo em `apps/web/src/` fora de
   `__tests__/`; nenhum arquivo em `openspec/changes/archive/`; em
   `infra/terraform/` apenas `variables.tf`, `terraform.tfvars.example`,
   `backend.hcl.example` e `README.md`.
-- [ ] 8.6 `openspec validate implantacao-fortesaude --strict`
+- [x] 8.6 `openspec validate implantacao-fortesaude --strict`
+
+## 9. Pendências descobertas na implementação
+
+- [ ] 9.1 **No arquivamento** (`/opsx:archive`): o `## Purpose` de
+  `openspec/specs/identidade-visual/spec.md` cita `SETES` como exemplo
+  ("identificação do cliente da implantação (ex.: **SETES**)"). O mecanismo de
+  delta substitui **blocos de requisito** — `Purpose` não é alcançado por um
+  delta só-`MODIFIED` (nenhum change arquivado deste repositório carrega
+  `Purpose` num delta sem `ADDED`; verificado). Corrigir a prosa para
+  `Forte Saúde` no mesmo commit do arquivamento, senão o registro consolidado
+  fica citando o cliente anterior.
+- [ ] 9.2 **Defeito corrigido durante a implementação, registrado para não
+  reaparecer:** a primeira redação da descrição de `var.app_name` continha
+  `` `${project_id}-${name_prefix}-files` `` dentro de um heredoco `<<-EOT`.
+  Terraform **interpola** `${...}` em heredoc, e `project_id` não é referência
+  válida num `description` (variável não referencia nada) — `terraform validate`
+  reprovaria o módulo inteiro, e só na Fase 1, na máquina do operador. Reescrito
+  como `<project_id>-<name_prefix>-files`. **Nunca usar `${}` em texto de
+  `description`**; se for inevitável, escapar como `$${}`.

@@ -91,12 +91,12 @@ describe('Identidade visual na tela de login (identidade-visual)', () => {
       'GET /auth/me': { status: 401 },
       'GET /auth/public-config': {
         status: 200,
-        body: { appName: 'PapelHub', clientName: 'SETES', manualUrl: '' },
+        body: { appName: 'PapelHub', clientName: 'Forte Saúde', manualUrl: '' },
       },
     });
     renderApp(['/login']);
 
-    await screen.findByText('SETES');
+    await screen.findByText('Forte Saúde');
     expect(screen.getByRole('heading', { name: 'PapelHub' })).toBeInTheDocument();
   });
 
@@ -115,7 +115,7 @@ describe('Identidade visual na tela de login (identidade-visual)', () => {
     renderApp(['/login']);
 
     await screen.findByRole('heading', { name: 'PapelHub' });
-    expect(screen.queryByText('SETES')).not.toBeInTheDocument();
+    expect(screen.queryByText('Forte Saúde')).not.toBeInTheDocument();
 
     await fillAndSubmit('ana@example.com', 'senha-correta');
     await screen.findByText('Bem-vindo ao PapelHub');
@@ -133,24 +133,24 @@ describe('Identidade visual na tela de login (identidade-visual)', () => {
     renderApp(['/login']);
 
     await screen.findByRole('heading', { name: 'PapelHub' });
-    expect(screen.queryByText('SETES')).not.toBeInTheDocument();
+    expect(screen.queryByText('Forte Saúde')).not.toBeInTheDocument();
 
     await fillAndSubmit('ana@example.com', 'senha-correta');
     await screen.findByText('Bem-vindo ao PapelHub');
   });
 
-  it('título do documento compõe "PapelHub - SETES" com identificação configurada', async () => {
+  it('título do documento compõe "PapelHub - Forte Saúde" com identificação configurada', async () => {
     mockFetch({
       'GET /auth/me': { status: 401 },
       'GET /auth/public-config': {
         status: 200,
-        body: { appName: 'PapelHub', clientName: 'SETES', manualUrl: '' },
+        body: { appName: 'PapelHub', clientName: 'Forte Saúde', manualUrl: '' },
       },
     });
     renderApp(['/login']);
 
     await screen.findByRole('heading', { name: 'PapelHub' });
-    await waitFor(() => expect(document.title).toBe('PapelHub - SETES'));
+    await waitFor(() => expect(document.title).toBe('PapelHub - Forte Saúde'));
   });
 
   it('sem identificação de cliente, o título do documento permanece "PapelHub"', async () => {
