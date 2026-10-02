@@ -685,6 +685,55 @@ criado.
 
 ---
 
+## Erros de ambiente (não são de configuração)
+
+Estes **não** vêm do Terraform deste repositório. Não edite `.tf` para resolvê-los.
+
+### IPv6 no Cloud Shell — `cannot assign requested address`
+
+```
+Error: Error when reading or editing GCS service account not found:
+Get "https://storage.googleapis.com/storage/v1/projects/<projeto>/serviceAccount...":
+dial tcp [2607:f8b0:400c:c15::cf]:443: connect: cannot assign requested address
+```
+
+O endereço entre colchetes é **IPv6**. O Cloud Shell não oferece IPv6 utilizável,
+mas o DNS devolve registro AAAA para `*.googleapis.com` e o provider (binário Go)
+tenta o IPv6 — a conexão falha ao não encontrar endereço de origem. É [bug
+conhecido do provider](https://github.com/hashicorp/terraform-provider-google/issues/6782),
+visto justamente em Cloud Shell.
+
+Pode cair em qualquer recurso ou `data source`; o `data
+google_storage_project_service_account` de [`pubsub.tf`](../infra/terraform/pubsub.tf)
+é só onde costuma aparecer primeiro, porque é lido cedo. **A mensagem cita o
+recurso, mas o problema não está nele.**
+
+1. **Primeiro, repita o comando.** O dial é intermitente, e um `plan`/`apply` é
+   retomável — o que falhou aqui foi uma **leitura**, nada foi escrito.
+
+2. **Se persistir, fixe IPv4** para os hosts que o módulo usa. O `/etc/hosts` do
+   Cloud Shell é do container efêmero, então isto se desfaz sozinho no fim da
+   sessão:
+
+   ```bash
+   for h in storage.googleapis.com run.googleapis.com sqladmin.googleapis.com \
+            secretmanager.googleapis.com pubsub.googleapis.com iam.googleapis.com \
+            cloudresourcemanager.googleapis.com compute.googleapis.com \
+            artifactregistry.googleapis.com cloudscheduler.googleapis.com \
+            serviceusage.googleapis.com iamcredentials.googleapis.com \
+            sts.googleapis.com; do
+     ip=$(getent ahostsv4 "$h" | awk '{print $1; exit}')
+     [ -n "$ip" ] && echo "$ip $h"
+   done | sudo tee -a /etc/hosts
+   ```
+
+   Google rotaciona esses IPs, então **não** versione o resultado nem o reuse
+   numa sessão futura: gere na hora, use, descarte.
+
+3. **Último recurso:** rode o Terraform de uma máquina com IPv4 funcional. O
+   state é remoto (bucket GCS), então trocar de máquina não perde nada — basta
+   clonar, recriar `backend.hcl` e `terraform.tfvars`, e `terraform init`.
+
 ## Não mexer
 
 ### Envelope de capacidade

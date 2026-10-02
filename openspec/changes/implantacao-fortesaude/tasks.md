@@ -340,3 +340,14 @@ secret e as concessões já existiam.
   desfaz um já instalado** — para esse caso a Armadilha 6 do runbook traz a
   saída (`gcloud run jobs delete` + `terraform state rm` + `apply`, já que a
   trava é do Terraform e não da API do Cloud Run).
+- [x] 10.6 **Erro de ambiente registrado para não ser confundido com defeito do
+  módulo.** O `apply` falhou com `dial tcp [2607:f8b0:...]:443: connect: cannot
+  assign requested address` ao ler
+  `data.google_storage_project_service_account` (`pubsub.tf:21`). É IPv6: o
+  Cloud Shell não oferece IPv6 utilizável, o DNS devolve AAAA para
+  `*.googleapis.com` e o provider (binário Go) tenta o IPv6 —
+  [bug conhecido do provider](https://github.com/hashicorp/terraform-provider-google/issues/6782).
+  **Nada a corrigir no Terraform.** Documentado na seção "Erros de ambiente" do
+  runbook, separada das Armadilhas de propósito: armadilha é falha silenciosa do
+  nosso desenho, isto é falha ruidosa de fora. A mensagem nomeia um recurso que
+  não é a causa, e sem esse registro o operador tende a editar `pubsub.tf`.
