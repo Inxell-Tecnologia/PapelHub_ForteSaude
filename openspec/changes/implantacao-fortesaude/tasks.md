@@ -208,11 +208,15 @@
 - [x] 7.4.2 ~~Conferir o tamanho gravado~~ — idem, feito na Fase 1a. Aqui resta
   apenas confirmar que a versão existe:
   `gcloud secrets versions list papelhub-prod-bootstrap-admin-password --project=fortesaude-papelhub`
-- [ ] 7.4.3 Executar o Job uma vez (idempotente; aplica migrações pendentes e
+- [x] 7.4.3 Executar o Job uma vez (idempotente; aplica migrações pendentes e
   cria **só** o `global_admin`):
   `gcloud run jobs execute papelhub-prod-bootstrap --project=fortesaude-papelhub --region=us-central1 --wait`
-- [ ] 7.4.4 Conferir nos logs do Job que o administrador foi criado, e não que
+- [x] 7.4.4 Conferir nos logs do Job que o administrador foi criado, e não que
   foi no-op por já existir.
+  _Execução `papelhub-prod-bootstrap-g8hmt`: sucesso, 1/1 completo, depois de
+  `jobs update --image` (defeito 10.9). Foi **criação**, não no-op: a execução
+  anterior (`-bbhkf`) falhou no arranque do container, antes de qualquer código
+  rodar, então não havia `global_admin` para o idempotente encontrar._
 
 ### Fase 5 — segundo `terraform apply` (CORS e Pub/Sub)
 
