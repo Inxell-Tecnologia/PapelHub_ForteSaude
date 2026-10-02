@@ -384,3 +384,33 @@ secret e as concessões já existiam.
   Runbook: Armadilha 4 nova, Armadilha 3 atualizada com a saída que passou a
   existir, e o passo 7 da Fase 0 passa a mandar habilitar os workflows **antes**
   de qualquer push na `main`.
+- [x] 10.9 **Jobs presos na imagem placeholder, e um caminho de entrypoint
+  errado que isso escondia.** O `gcloud run jobs execute papelhub-prod-bootstrap`
+  falhou com `The container exited with an error` / `exit code: 1`. Causa: o Job
+  nasceu na Fase 1 com `var.api_image` = `us-docker.pkg.dev/cloudrun/container/hello`
+  (placeholder) e **o CI/CD só atualiza o Job de migração** — rodou
+  `node apps/api/dist/db/bootstrap.js` num container que não tem Node nem o
+  arquivo. Vale igualmente para `trash-purge` e `notify-grants`.
+  **Runbook:** a Fase 4 ganha o passo obrigatório de `gcloud run jobs update
+  --image` antes do `execute`, e um passo novo para os dois Jobs agendados —
+  cujo sintoma é pior por ser silencioso (falham de madrugada, ninguém olha).
+  **Afirmação incorreta corrigida** em `infra/terraform/README.md`: dizia que
+  `terraform apply` apontando `var.api_image` manteria os Jobs atualizados.
+  Não mantém — `ignore_changes` ignora o atributo nos **dois** sentidos, então
+  mudar a variável não gera diff. `gcloud run jobs update --image` é o único
+  caminho hoje.
+- [x] 10.10 **Entrypoint errado nos dois Jobs agendados (defeito latente).**
+  `scheduler.tf` usava `dist/jobs/purge-trash.js` e
+  `dist/jobs/notify-expiring-grants.js`, mas o WORKDIR do Dockerfile é `/app` e
+  o build da API é copiado para `/app/apps/api/dist` — os caminhos corretos são
+  `apps/api/dist/jobs/*.js`, a mesma forma do `CMD` e dos Jobs de migração e de
+  bootstrap. **Nunca deu sintoma** porque os dois Jobs estavam com a imagem
+  placeholder e falhavam antes de chegar ao módulo; assim que ganhassem a imagem
+  real (10.9) passariam a falhar com "Cannot find module" às 03:00 e 03:30,
+  todas as noites, em silêncio. Corrigido — exige `terraform apply` para
+  aplicar, já que `ignore_changes` cobre só a imagem, não os `args`.
+- [ ] 10.11 **Estender o CI/CD para atualizar a imagem dos quatro Jobs.** Hoje
+  só o de migração avança sozinho, e os outros três dependem de `gcloud` manual
+  a cada deploy — ou seja, divergem da imagem do serviço por padrão. Fora de
+  escopo desta fatia (já era pendência registrada no README da fundação), mas
+  agora com custo conhecido: foi o que quebrou a Fase 4.

@@ -444,15 +444,54 @@ não tem auto-registro. O Job
    Isso só se aplica depois de uma execução que criou o admin — na primeira
    passagem, pule.
 
-3. **Executar o Job uma vez:**
+3. **Atualizar a imagem do Job — obrigatório antes de executar.** O Job nasceu
+   na Fase 1 com a imagem **placeholder** (`cloudrun/container/hello`), e o
+   CI/CD atualiza **apenas** o Job de migração. Executá-lo sem isto falha com
+   `The container exited with an error` e `exit code: 1` — o container
+   placeholder não tem Node nem o arquivo:
+
+   ```bash
+   IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/papelhub-prod-api/api"
+
+   gcloud run jobs update "papelhub-prod-bootstrap" --image "${IMAGE}:latest" \
+     --project="$PROJECT_ID" --region="$REGION"
+   ```
+
+   Conferir antes e depois, se quiser ver a troca:
+
+   ```bash
+   gcloud run jobs describe papelhub-prod-bootstrap \
+     --project="$PROJECT_ID" --region="$REGION" \
+     --format='value(template.template.containers[0].image)'
+   ```
+
+4. **Executar o Job uma vez:**
 
    ```bash
    gcloud run jobs execute "papelhub-prod-bootstrap" \
      --project="$PROJECT_ID" --region="$REGION" --wait
    ```
 
-4. **Conferir nos logs** que o administrador foi **criado**, e não que o Job foi
+5. **Conferir nos logs** que o administrador foi **criado**, e não que o Job foi
    no-op por já existir um `global_admin`.
+
+6. **Atualizar também a imagem dos Jobs agendados.** Mesma situação: nasceram com
+   o placeholder e o CI/CD não os toca. Sem isto, o expurgo da lixeira (03:00) e
+   os avisos de expiração (03:30) falham silenciosamente todas as noites — são
+   agendados, ninguém olha, e só se percebe quando a lixeira não expurga.
+
+   ```bash
+   for J in papelhub-prod-trash-purge papelhub-prod-notify-grants; do
+     gcloud run jobs update "$J" --image "${IMAGE}:latest" \
+       --project="$PROJECT_ID" --region="$REGION"
+   done
+   ```
+
+   > **`terraform apply` NÃO resolve isto.** Os quatro Jobs declaram
+   > `lifecycle.ignore_changes` no campo da imagem, para que um `apply` de rotina
+   > não reverta o que o CI/CD publicou. O efeito colateral é que mudar
+   > `var.api_image` também não os atualiza: o atributo é ignorado nos dois
+   > sentidos. `gcloud run jobs update --image` é o único caminho hoje.
 
 > O e-mail `admin@papelhub.com` é **identificador de acesso, não endereço de
 > entrega**. O `NotificationPort` tem hoje só a implementação in-app
