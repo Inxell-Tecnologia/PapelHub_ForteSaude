@@ -359,3 +359,21 @@ secret e as concessões já existiam.
   que a Fase 2 e a Fase 5 consomem — a segunda forma
   (`-495571187094.us-central1.run.app`) é a que a Armadilha 1 exige no CORS e a
   que ninguém lembra de coletar.
+- [x] 10.8 **Workflows desabilitados por ser fork — e o `deploy.yml` sem disparo
+  manual.** O push do merge na `main` foi aceito pelo git e **nada rodou**: o
+  GitHub desabilita os workflows de um repositório que já continha arquivos de
+  workflow quando foi forkado. Sintoma mudo — aba Actions vazia, zero execuções
+  em todos os três workflows, nenhum erro em lugar nenhum.
+  Agrava que **habilitar não reexecuta o evento perdido**, e o `deploy.yml` só
+  tinha `workflow_run` — exatamente a agravante que a Armadilha 3 já registrava
+  como "não existe disparo manual". Sem conserto, a implantação ficaria presa na
+  imagem placeholder do Cloud Run sem caminho de saída.
+  **Corrigido** em `.github/workflows/deploy.yml`: `workflow_dispatch`
+  acrescentado, `TARGET_SHA` como fonte única do commit implantado (antes
+  `head_sha` aparecia em sete pontos, e qualquer gatilho novo exigiria tocar
+  todos), condições dos dois jobs aceitando os dois gatilhos, e o gate
+  explicitamente **não se aplicando** a disparo manual — pedir implantação de
+  propósito é o oposto de um merge sem efeito em produção.
+  Runbook: Armadilha 4 nova, Armadilha 3 atualizada com a saída que passou a
+  existir, e o passo 7 da Fase 0 passa a mandar habilitar os workflows **antes**
+  de qualquer push na `main`.
