@@ -66,3 +66,5 @@ quando sua conta é criada. Existem três:
 
 _Este manual cobre o uso funcional do PapelHub. Para dúvidas sobre políticas de acesso da
 sua organização, procure a área administrativa da sua unidade._
+
+<!-- Republicação do site (2026-10-05): o merge que trouxe o manual para a main ocorreu com os workflows desabilitados no fork, então o Docs nunca rodou. -->
