@@ -604,7 +604,9 @@ Ordem — cada passo depende do anterior:
    Job de migração com as migrations novas e implanta a revisão nova do
    serviço. Conferir no Actions que o run terminou verde — e, nos logs do Job de
    migração, que as migrations novas foram **aplicadas**, não puladas.
-2. **`terraform plan`** em `infra/terraform`. O esperado é **só adição** e
+2. **Revisar os Jobs novos** antes do plan (Armadilha 10): `deletion_protection
+   = false`, `depends_on` na concessão do secret e `args` com `apps/api/dist/`.
+   **`terraform plan`** em `infra/terraform`. O esperado é **só adição** e
    atualização no lugar: conta de serviço, IAM, Job e agendamento
    `notify-readings`, e a variável de ambiente nova no serviço. **Qualquer
    `destroy` ou `must be replaced` é motivo para parar** — com a `name_prefix`
@@ -809,6 +811,49 @@ criado.
   `execute --wait`.
 
 ---
+
+### 9. Assinatura do Pub/Sub expira após 31 dias sem upload
+
+Sem `expiration_policy`, o GCP **apaga** a assinatura de push após 31 dias sem
+atividade. Foi o que aconteceu nesta implantação, entre outubro e novembro de
+2026: o `terraform plan` do sync passou a mostrar
+`google_pubsub_subscription.storage_finalize will be created` sem que ninguém a
+tivesse removido.
+
+- **Sintoma:** uploads concluem no navegador, mas os arquivos ficam em
+  `pending` — não aparecem como ativos e não entram na cota. Nenhum erro: o
+  tópico continua recebendo o evento do bucket e o descarta, por não ter
+  assinatura.
+- **Diagnóstico:** `gcloud pubsub subscriptions describe
+  papelhub-prod-storage-finalize-push` → `NOT_FOUND`.
+- **Correção permanente:** `expiration_policy { ttl = "" }` em `pubsub.tf`
+  (já aplicada).
+- **Recuperar os uploads do intervalo**, depois de recriar a assinatura —
+  reaproveitando o Job de migração, que roda como a conta da API (banco +
+  bucket) e só troca o script nesta execução:
+
+  ```bash
+  gcloud run jobs execute papelhub-prod-migrate --region="$REGION" --wait \
+    --args=apps/api/dist/jobs/backfill-pending-finalize.js
+  ```
+
+  O script é idempotente (só percorre `pending`/`replacing`) e imprime
+  `Backfill concluído: N reconciliado(s), M sem objeto no storage, F falha(s)`.
+
+### 10. Recurso novo vindo do upstream sem as travas do fork
+
+O fork endureceu os Cloud Run Jobs com duas arestas que o upstream não tem:
+`deletion_protection = false` e `depends_on` na concessão de `secretAccessor` da
+própria service account (Armadilhas 6 e 7). Um Job **novo** que chega por sync
+vem sem elas — foi o caso do `notify-readings`, cujo primeiro apply falhou com
+`Permission denied on secret` e deixou o Job `tainted` e protegido.
+
+- **Ao revisar um sync:** todo `resource "google_cloud_run_v2_job"` novo precisa
+  de `deletion_protection = false`, da aresta para o seu
+  `google_secret_manager_secret_iam_member`, e de `args` com o prefixo
+  `apps/api/dist/` (o caminho do upstream, `dist/...`, não existe na imagem).
+- **Se o apply já falhou:** saída da Armadilha 7 — `gcloud run jobs delete`,
+  `terraform state rm` e novo `apply` com o código corrigido.
 
 ## Erros de ambiente (não são de configuração)
 
