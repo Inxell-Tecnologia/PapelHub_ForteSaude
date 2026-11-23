@@ -79,7 +79,7 @@ terraform apply
 
 Depois do primeiro `apply`, a API sobe com uma imagem placeholder pública
 (`us-docker.pkg.dev/cloudrun/container/hello`) — o Cloud Run existe, mas
-ainda não roda o código do GDoc. O CI/CD (`.github/workflows/deploy.yml`)
+ainda não roda o código do PapelHub. O CI/CD (`.github/workflows/deploy.yml`)
 publica a imagem real no Artifact Registry criado aqui e faz o deploy; o
 lifecycle `ignore_changes` no `cloud_run.tf` garante que um `terraform apply`
 seguinte não reverta esse deploy.
@@ -103,7 +103,9 @@ outputs deste Terraform:
 
 Sem chave de service account em lugar nenhum — `cicd.tf` provisiona um
 Workload Identity Pool que só aceita tokens OIDC do repositório configurado
-em `github_repository` (`CarlosSalesNaturalTec/GDoc` por padrão).
+em `github_repository` (`Inxell-Tecnologia/PapelHub_ForteSaude` por padrão —
+o default versionado é o deste fork, change `implantacao-fortesaude`,
+design.md D1).
 
 Os bindings de IAM do deployer (`cicd.tf`) são **por recurso** (privilégio
 mínimo): `roles/artifactregistry.writer` no repositório de imagens,
