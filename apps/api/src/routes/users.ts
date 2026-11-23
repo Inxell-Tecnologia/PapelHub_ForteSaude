@@ -103,6 +103,63 @@ function isUniqueViolation(err: unknown): boolean {
 }
 
 /**
+ * Unicidade do e-mail violada na edição (change `edicao-email-pessoa`,
+ * design.md D2). Casa pela **constraint**, não por qualquer `23505`, para não
+ * rotular como "e-mail em uso" uma futura unicidade em outra coluna.
+ */
+function isEmailUniqueViolation(err: unknown): boolean {
+  return (
+    isUniqueViolation(err) && (err as { constraint?: string }).constraint === 'users_email_key'
+  );
+}
+
+/**
+ * Campos registrados na edição de pessoa (change `edicao-email-pessoa`,
+ * design.md D5): nome no contrato da API → coluna de `users`. São todos os
+ * campos que `PATCH /users/:id` aceita; a senha não é um deles. Os metadados
+ * `reading_oversight_set_by/_at` ficam de fora — já são, eles mesmos, rastro.
+ */
+const AUDITED_PERSON_FIELDS = {
+  email: 'email',
+  fullName: 'full_name',
+  phone: 'phone',
+  jobTitle: 'job_title',
+  notes: 'notes',
+  sectorId: 'sector_id',
+  role: 'role',
+  status: 'status',
+  storageQuotaBytes: 'storage_quota_bytes',
+  readingOversight: 'reading_oversight',
+} as const;
+
+type AuditedColumn = (typeof AUDITED_PERSON_FIELDS)[keyof typeof AUDITED_PERSON_FIELDS];
+type AuditedRow = Record<AuditedColumn, string | null>;
+
+/** `bigint` chega do `pg` como texto; no registro a cota vai em bytes numéricos. */
+function auditValue(column: AuditedColumn, value: string | null): string | number | null {
+  if (value === null || value === undefined) return null;
+  return column === 'storage_quota_bytes' ? Number(value) : value;
+}
+
+/**
+ * Diferença entre a linha anterior e a posterior à edição, só com os campos que
+ * **efetivamente** mudaram — reenviar o valor vigente (o formulário sempre manda
+ * papel e status) não entra no registro.
+ */
+function personChanges(
+  before: AuditedRow,
+  after: AuditedRow,
+): Record<string, { from: string | number | null; to: string | number | null }> {
+  const changes: Record<string, { from: string | number | null; to: string | number | null }> = {};
+  for (const [field, column] of Object.entries(AUDITED_PERSON_FIELDS)) {
+    const from = auditValue(column, before[column]);
+    const to = auditValue(column, after[column]);
+    if (from !== to) changes[field] = { from, to };
+  }
+  return changes;
+}
+
+/**
  * O setor informado pertence à unidade de destino? (change
  * `funcao-e-setor-na-identidade`, capability `gestao-pessoas`.)
  *
@@ -158,6 +215,10 @@ async function targetRoleOf(client: PoolClient, targetId: string): Promise<strin
  * contrariando a própria spec `gestao-pessoas`, que sempre permitiu
  * `global_admin` sobre `global_admin`. Se alterar uma, confira se a outra
  * realmente deve acompanhar.
+ *
+ * A **troca de e-mail** (change `edicao-email-pessoa`, design.md D1) segue
+ * esta regra, e não a de senha: trocar o e-mail de alguém não entrega a conta
+ * dele, porque a senha continua sendo a do dono.
  */
 async function canEditTarget(
   client: PoolClient,
@@ -390,6 +451,18 @@ export function usersRouter(ports: Ports): Router {
         return;
       }
 
+      // Troca de e-mail (change `edicao-email-pessoa`, design.md D1): sob o
+      // mesmo alcance da edição (`canEditTarget`), sem regra própria. Gravado
+      // como recebido, igual ao cadastro — sem normalização de caixa (fora de
+      // escopo); o formato é validado na SPA, como no cadastro.
+      if (
+        body.email !== undefined &&
+        (typeof body.email !== 'string' || body.email.trim() === '')
+      ) {
+        res.status(400).json({ error: 'invalid request body' });
+        return;
+      }
+
       // Travas de auto-edição (change `edicao-entre-admins-globais`, design.md
       // D2), válidas para **qualquer** papel. Até este change elas eram
       // desnecessárias no servidor: ninguém alcançava um `global_admin`, então
@@ -449,6 +522,7 @@ export function usersRouter(ports: Ports): Router {
         setClauses.push(`${column} = $${values.length}`);
       };
       if (body.fullName !== undefined) setField('full_name', body.fullName);
+      if (body.email !== undefined) setField('email', body.email);
       if (body.phone !== undefined) setField('phone', body.phone);
       if (body.jobTitle !== undefined) setField('job_title', body.jobTitle);
       // Tres estados, como em `storage_quota_bytes`: ausente preserva, `null`
@@ -549,12 +623,36 @@ export function usersRouter(ports: Ports): Router {
             }
           }
 
+          // Linha anterior para o registro administrativo (change
+          // `edicao-email-pessoa`, design.md D5), travada com `FOR UPDATE`
+          // para que duas edições concorrentes não registrem o mesmo "antes".
+          const auditedColumns = Object.values(AUDITED_PERSON_FIELDS).join(', ');
+          const { rows: antes } = await client.query<AuditedRow & { unit_id: string }>(
+            `SELECT unit_id, ${auditedColumns} FROM users WHERE id = $1 FOR UPDATE`,
+            [req.params.id],
+          );
+          const before = antes[0];
+          if (!before) return { kind: 'forbidden' };
+
           const { rows } = await client.query<PersonRow>(
             `UPDATE users SET ${setClauses.join(', ')} WHERE id = $${values.length} RETURNING ${PERSON_COLUMNS}`,
             values,
           );
           const row = rows[0];
-          return row ? { kind: 'ok', row } : { kind: 'forbidden' };
+          if (!row) return { kind: 'forbidden' };
+
+          // Só edição **efetiva** é registrada, na mesma transação: se o
+          // INSERT falhar, a edição inteira desfaz. `unit_id` é o da pessoa
+          // editada, não o do autor (design.md D3).
+          const changes = personChanges(before, row as unknown as AuditedRow);
+          if (Object.keys(changes).length > 0) {
+            await client.query(
+              `INSERT INTO admin_events (unit_id, actor_user_id, target_user_id, action, changes)
+               VALUES ($1, $2, $3, 'person_updated', $4::jsonb)`,
+              [before.unit_id, ctx.userId, row.id, JSON.stringify(changes)],
+            );
+          }
+          return { kind: 'ok', row };
         });
 
       let outcome: PatchOutcome;
@@ -563,6 +661,12 @@ export function usersRouter(ports: Ports): Router {
       } catch (err) {
         // Recusa total (design.md D2): a transação inteira desfaz, nenhum
         // campo enviado é aplicado.
+        if (isEmailUniqueViolation(err)) {
+          // Mesma resposta do cadastro (change `edicao-email-pessoa`,
+          // design.md D2), para a SPA reusar o tratamento no campo.
+          res.status(409).json({ error: 'email already in use' });
+          return;
+        }
         if (!isOversightSectorViolation(err)) throw err;
         outcome = { kind: 'oversight_requires_sector' };
       }
