@@ -1,20 +1,27 @@
 import { paleta, TAMANHO_MINIMO_TEXTO, FAMILIA_TITULO } from '../app/theme';
 import { ATIVOS_DA_MARCA, BrandMark } from './BrandMark';
 
-/** Largura da logo na marca expandida — medida da demanda nº 2, seção 1.1. */
-const LARGURA_DA_LOGO = 150;
+/**
+ * Largura da logo na marca expandida. A logo horizontal da Forte Saúde (4,76:1)
+ * é bem mais larga que a do ISETES (2,34:1) para a qual os 150 px da demanda
+ * nº 2 foram medidos: ocupa quase toda a faixa ao lado do controle de recolher
+ * (264 − 16 − 8 − 44 − 4 = 192 px): 186 px, que fecham sem resto com 39 px de
+ * altura. Abaixo dos 64 px de antes, o orçamento de altura da navegação ganha
+ * folga (change `identidade-visual-fortesaude`, design.md D6).
+ */
+const LARGURA_DA_LOGO = 186;
 
 /**
- * Marca do shell expandido: logo do Instituto SETES e, logo abaixo, o nome do
+ * Marca do shell expandido: logo da Forte Saúde e, logo abaixo, o nome do
  * produto e o descritor em texto (`docs/demanda_cliente_3.md`, item 1;
  * capability `identidade-visual`).
  *
- * **Nome acessível** (design.md D3): a logo tem "INSTITUTO SETES" escrito —
+ * **Nome acessível** (design.md D3): a logo tem "FORTESAÚDE" escrito —
  * é informação, então é anunciada pelo nome da organização; o nome do
  * **produto** é anunciado uma única vez, pelo texto "PapelHub".
  *
  * **Sem a linha da identificação do cliente.** Com a logo da organização no
- * topo, "SETES" em texto logo abaixo seria repetição, e custaria 18 px que o
+ * topo, "Forte Saúde" em texto logo abaixo seria repetição, e custaria 18 px que o
  * orçamento de altura da navegação não tem (design.md D1). A identificação
  * continua no título do documento e na tela de login.
  */

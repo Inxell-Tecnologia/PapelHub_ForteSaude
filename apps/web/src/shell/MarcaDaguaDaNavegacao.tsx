@@ -7,21 +7,23 @@ import { ATIVOS_DA_MARCA } from './BrandMark';
  * Apurada por cálculo, não por inspeção: o símbolo **clareia** o fundo escuro,
  * e o par mais frágil é `textoSobreEscuro` (rótulos de grupo, texto do cartão)
  * sobre a mistura do pixel mais luminoso do símbolo com `marinhoClaro`, a base
- * do degradê:
+ * do degradê. Reapurada com a paleta da Forte Saúde (change
+ * `identidade-visual-fortesaude`, design.md D5):
  *
  *   opacidade   textoSobreEscuro   branco
- *     0%          5,48:1            8,16:1
- *     6%          4,98:1            7,42:1
- *     8%          4,79:1            7,14:1   ← adotada
- *    10%          4,62:1            6,88:1
- *    14%          4,35:1 ✗          6,48:1   (medida da demanda nº 2)
+ *     0%          7,33:1           10,68:1
+ *     8%          6,13:1            8,94:1   ← adotada
+ *    14%          5,29:1            7,72:1   (medida da demanda nº 2)
+ *    22%          4,25:1 ✗          6,54:1   ← teto
  *
- * O teste de contraste refaz a conta a partir desta constante.
+ * A opacidade não mudou com a paleta: é escolha visual já aceita, e o índigo
+ * a sustenta com mais folga que o marinho anterior. O teste de contraste refaz
+ * a conta a partir desta constante.
  */
 export const OPACIDADE_MARCA_DAGUA_NAVEGACAO = 0.08;
 
-/** Pixel mais luminoso do símbolo — o pior caso para o texto que passa por cima. */
-export const COR_MAIS_CLARA_DO_SIMBOLO = '#00DE89';
+/** Pixel mais luminoso do símbolo negativo — o pior caso para o texto que passa por cima. */
+export const COR_MAIS_CLARA_DO_SIMBOLO = '#FFFFFF';
 
 /** Altura do símbolo — medida da demanda nº 2, seção 1.1. */
 const ALTURA_MARCA_DAGUA = 200;

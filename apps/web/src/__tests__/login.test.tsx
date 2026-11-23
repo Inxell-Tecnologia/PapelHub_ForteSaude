@@ -229,7 +229,7 @@ describe('Identidade visual na tela de login (identidade-visual)', () => {
     renderApp(['/login']);
 
     const heading = await screen.findByRole('heading', { name: 'PapelHub' });
-    const logo = document.querySelector('img[src="/isetes-logo-branca.png"]') as HTMLElement;
+    const logo = document.querySelector('img[src="/forte-saude-logo-negativa.png"]') as HTMLElement;
     const campoEscuro = heading.parentElement as HTMLElement;
 
     expect(campoEscuro.contains(logo)).toBe(true);

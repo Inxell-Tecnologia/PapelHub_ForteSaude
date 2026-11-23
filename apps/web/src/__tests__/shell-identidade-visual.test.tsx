@@ -18,7 +18,7 @@ import {
  * Marca do shell (capability `identidade-visual`), na forma da change
  * `identidade-isetes-e-menu-compacto`:
  *
- * - expandida: a logo branca do Instituto SETES (anunciada pelo nome da
+ * - expandida: a logo negativa da Forte Saúde (anunciada pelo nome da
  *   organização, por ter texto escrito), "PapelHub" e o descritor em texto,
  *   sem a linha da identificação do cliente (design.md D3);
  * - colapsada: o símbolo, anunciado como PapelHub;
@@ -63,10 +63,12 @@ describe('Identidade visual no shell (identidade-visual)', () => {
 
     await screen.findByText('PapelHub');
 
-    const logo = within(marca()).getByRole('img', { name: 'Instituto SETES' });
+    const logo = within(marca()).getByRole('img', { name: 'Forte Saúde' });
     expect(logo).toHaveAttribute('src', ATIVOS_DA_MARCA.logo.src);
-    // 150 px de largura (demanda nº 2), altura pela proporção do ativo.
-    expect(logo).toHaveAttribute('width', '150');
+    // 186 px de largura — a logo horizontal da Forte Saúde ocupa a faixa ao
+    // lado do controle de recolher (identidade-visual-fortesaude, design.md
+    // D6); altura pela proporção do ativo.
+    expect(logo).toHaveAttribute('width', '186');
     // O nome do produto é anunciado uma única vez — pelo texto.
     expect(within(marca()).getAllByText('PapelHub')).toHaveLength(1);
     expect(within(marca()).queryByRole('img', { name: 'PapelHub' })).not.toBeInTheDocument();
@@ -81,7 +83,7 @@ describe('Identidade visual no shell (identidade-visual)', () => {
     renderApp(['/']);
 
     await screen.findByText('PapelHub');
-    const logo = within(marca()).getByRole('img', { name: 'Instituto SETES' });
+    const logo = within(marca()).getByRole('img', { name: 'Forte Saúde' });
     expect(logo.parentElement?.style.background ?? '').toBe('');
     expect(document.querySelector('img[src="/logo-papelhub.jpg"]')).toBeNull();
   });
@@ -96,9 +98,7 @@ describe('Identidade visual no shell (identidade-visual)', () => {
 
     const simbolo = within(marca()).getByRole('img', { name: 'PapelHub' });
     expect(simbolo).toHaveAttribute('src', ATIVOS_DA_MARCA.simbolo.src);
-    expect(
-      within(coluna()).queryByRole('img', { name: 'Instituto SETES' }),
-    ).not.toBeInTheDocument();
+    expect(within(coluna()).queryByRole('img', { name: 'Forte Saúde' })).not.toBeInTheDocument();
     expect(within(coluna()).queryByText('Gestão de Documentos')).not.toBeInTheDocument();
     expect(within(coluna()).queryByText('Forte Saúde')).not.toBeInTheDocument();
   });
@@ -188,7 +188,9 @@ describe("Marca d'água da área principal (identidade-visual)", () => {
     expect(camada.style.overflow).toBe('hidden');
     const img = camada.querySelector('img')!;
     expect(img).toHaveAttribute('alt', '');
-    expect(img).toHaveAttribute('src', ATIVOS_DA_MARCA.simbolo.src);
+    // Fundo claro: o símbolo **colorido**, não o negativo da navegação
+    // (identidade-visual-fortesaude, design.md D2).
+    expect(img).toHaveAttribute('src', ATIVOS_DA_MARCA.simboloSobreClaro.src);
     expect(img.style.opacity).toBe(String(OPACIDADE_MARCA_DAGUA_AREA_PRINCIPAL));
     // Atrás do conteúdo.
     const conteudo = document.querySelector('.ant-layout-content') as HTMLElement;

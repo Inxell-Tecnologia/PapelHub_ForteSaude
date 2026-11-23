@@ -51,32 +51,35 @@ describe('Razão de contraste (sistema-de-design, apuração por cálculo)', () 
     expect(luminanciaRelativa('#000000')).toBeCloseTo(0, 10);
   });
 
-  // Tabela da decisão D2/D3 do design.md desta change, verificada valor a
-  // valor: se um token mudar, é aqui que a mudança aparece antes de chegar à
-  // tela.
+  // Tabela da decisão D2/D3 do design.md desta change, reapurada para a
+  // paleta da Forte Saúde (change `identidade-visual-fortesaude`, design.md
+  // D3) e verificada valor a valor: se um token mudar, é aqui que a mudança
+  // aparece antes de chegar à tela. Os nomes "verde"/"marinho" são os papéis
+  // herdados dos tokens (D4): verde da marca = laranja de destaque, marinho =
+  // índigo.
   it.each([
-    ['branco sobre o verde de ação', paleta.branco, paleta.verdeAcao, 5.37],
-    ['branco sobre o verde da marca', paleta.branco, paleta.verdeMarca, 2.21],
-    ['texto sobre o verde da marca', paleta.texto, paleta.verdeMarca, 7.77],
-    ['branco sobre o topo do degradê', paleta.branco, paleta.marinhoEscuro, 15.76],
-    ['branco sobre a base do degradê', paleta.branco, paleta.marinhoClaro, 8.16],
+    ['branco sobre o verde de ação', paleta.branco, paleta.verdeAcao, 5.76],
+    ['branco sobre o verde da marca', paleta.branco, paleta.verdeMarca, 2.55],
+    ['texto sobre o verde da marca', paleta.texto, paleta.verdeMarca, 6.73],
+    ['branco sobre o topo do degradê', paleta.branco, paleta.marinhoEscuro, 16.66],
+    ['branco sobre a base do degradê', paleta.branco, paleta.marinhoClaro, 10.68],
     ['texto sobre a superfície', paleta.texto, paleta.superficie, 15.92],
     ['texto de apoio sobre a superfície', paleta.textoApoio, paleta.superficie, 5.85],
-    ['link sobre branco', paleta.azulLink, paleta.branco, 8.06],
+    ['link sobre branco', paleta.azulLink, paleta.branco, 12.29],
     [
       'texto de apoio sobre o topo do degradê',
       paleta.textoSobreEscuro,
       paleta.marinhoEscuro,
-      10.58,
+      11.43,
     ],
-    ['texto de apoio sobre a base do degradê', paleta.textoSobreEscuro, paleta.marinhoClaro, 5.48],
+    ['texto de apoio sobre a base do degradê', paleta.textoSobreEscuro, paleta.marinhoClaro, 7.33],
     ['borda de controle sobre branco', paleta.bordaControle, paleta.branco, 3.57],
     ['borda de controle sobre a superfície', paleta.bordaControle, paleta.superficie, 3.31],
     ['borda decorativa sobre branco', paleta.bordaDecorativa, paleta.branco, 1.27],
     // Avatar de identidade (change `menu-lateral-e-barra-superior`, design.md D7)
-    ['iniciais escuras sobre o avatar', paleta.texto, paleta.azulAvatar, 11.12],
-    ['branco sobre o avatar — par RECUSADO', paleta.branco, paleta.azulAvatar, 1.54],
-    ['avatar sobre a base do degradê', paleta.azulAvatar, paleta.marinhoClaro, 5.29],
+    ['iniciais escuras sobre o avatar', paleta.texto, paleta.azulAvatar, 10.19],
+    ['branco sobre o avatar — par RECUSADO', paleta.branco, paleta.azulAvatar, 1.68],
+    ['avatar sobre a base do degradê', paleta.azulAvatar, paleta.marinhoClaro, 6.34],
   ])('%s mede %s:1, como apurado no design', (_nome, a, b, esperado) => {
     expect(razaoDeContraste(a as string, b as string)).toBeCloseTo(esperado as number, 2);
   });
@@ -286,8 +289,15 @@ describe("Marca d'água da navegação (identidade-isetes-e-menu-compacto, desig
     expect(atendeAoPiso(paleta.branco, fundo, PISO_CONTRASTE_TEXTO)).toBe(true);
   });
 
-  it('os 14% da demanda nº 2 reprovariam o piso — o teto não é arbitrário', () => {
+  // Com o índigo da Forte Saúde o teto subiu: os 14% da demanda nº 2, que
+  // reprovavam com o marinho do ISETES, agora passam; o piso só cai a partir
+  // de 22% (change `identidade-visual-fortesaude`, design.md D5). A opacidade
+  // adotada não mudou — é escolha visual, não limite.
+  it('o teto apurado fica bem acima da opacidade adotada — e existe', () => {
     expect(atendeAoPiso(paleta.textoSobreEscuro, fundoSobAMarca(0.14), PISO_CONTRASTE_TEXTO)).toBe(
+      true,
+    );
+    expect(atendeAoPiso(paleta.textoSobreEscuro, fundoSobAMarca(0.22), PISO_CONTRASTE_TEXTO)).toBe(
       false,
     );
   });

@@ -7,27 +7,43 @@ import type { ThemeConfig } from 'antd';
  * de marca, família tipográfica ou raio por literal: tudo deriva daqui e
  * chega aos componentes pelo `ConfigProvider` de `App.tsx`.
  *
- * As cores vêm do guia visual do cliente, **menos** nos dois pontos em que o
- * próprio guia se contradiz com o piso de acessibilidade que ele exige — ver
- * `verdeAcao` (design.md D2) e `bordaControle` (design.md D3). Os pares
- * normatizados são apurados por cálculo em `__tests__/contraste.test.ts`, não
- * por inspeção visual.
+ * As cores de marca derivam da logo da **Forte Saúde** — azul `#2121B7` e
+ * laranja `#F6841F` — e de tons delas (change `identidade-visual-fortesaude`,
+ * design.md D3). Os pares normatizados são apurados por cálculo em
+ * `__tests__/contraste.test.ts`, não por inspeção visual.
+ *
+ * **Os nomes dos tokens são papéis herdados do upstream**, que vestia a
+ * identidade do Instituto SETES (marinho e verde): `verdeMarca` é a cor de
+ * destaque da marca — aqui, laranja —, `verdeAcao` a cor de ação, e
+ * `marinhoEscuro`/`marinhoClaro` os extremos do degradê — aqui, índigo. Os
+ * nomes ficam de propósito: renomeá-los transformaria cada uso num conflito no
+ * próximo sync com o upstream, sem nenhum efeito observável
+ * (`identidade-visual-fortesaude`, design.md D4).
  */
 export const paleta = {
-  /** Topo do degradê da navegação e fundo da tela de login (15,76:1 com branco — nível AAA). */
-  marinhoEscuro: '#012442',
-  /** Base do degradê da navegação (8,16:1 com branco). */
-  marinhoClaro: '#0B5382',
   /**
-   * Verde da logomarca. Superfície de destaque — item de navegação ativo,
-   * indicador —, **nunca** fundo de texto branco: mede 2,21:1 com branco
-   * (design.md D2). Sobre ele vai `texto`, que mede 7,77:1.
+   * Topo do degradê da navegação e fundo da tela de login — azul da logo
+   * escurecido (índigo profundo). 16,66:1 com branco, nível AAA.
    */
-  verdeMarca: '#0EC782',
-  /** Verde de ação: fundo de botão principal, com rótulo branco a 5,37:1 (design.md D2). */
-  verdeAcao: '#067A52',
-  /** Links (8,06:1 sobre branco). */
-  azulLink: '#025484',
+  marinhoEscuro: '#12115C',
+  /** Base do degradê da navegação — o azul da logo (10,68:1 com branco). */
+  marinhoClaro: '#2121B7',
+  /**
+   * Cor de **destaque** da marca: o laranja da logo. Superfície de destaque —
+   * item de navegação ativo, indicador, anel de foco sobre a navegação —,
+   * **nunca** fundo de texto branco: mede 2,55:1 com branco (design.md D2 de
+   * `identidade-visual-isetes`). Sobre ela vai `texto`, que mede 6,73:1.
+   */
+  verdeMarca: '#F6841F',
+  /**
+   * Cor de **ação**: laranja da logo escurecido, fundo de botão principal com
+   * rótulo branco a 5,76:1. O tom é fixado pelo texto de ação sobre a marca
+   * d'água da área principal (4,79:1 a 6%) — um laranja mais claro reprovaria
+   * ali (`identidade-visual-fortesaude`, design.md D3).
+   */
+  verdeAcao: '#A84A00',
+  /** Links — azul da logo escurecido (12,29:1 sobre branco). */
+  azulLink: '#1C1C9E',
   /** Texto corrente (17,16:1 sobre branco; 15,92:1 sobre a superfície). */
   texto: '#0F1D26',
   /** Texto de apoio (6,30:1 sobre branco; 5,85:1 sobre a superfície). */
@@ -38,12 +54,12 @@ export const paleta = {
   branco: '#FFFFFF',
   /**
    * Texto de apoio **sobre a navegação escura** — identificação do cliente
-   * sob a logomarca, por exemplo. Opaco de propósito: o branco a 65% que
-   * havia antes media 3,78:1 contra a base do degradê, abaixo do piso de
-   * 4,5:1 que esta change passa a exigir. Este tom mede 10,58:1 no topo do
-   * degradê e 5,48:1 na base — folgado nos dois extremos.
+   * sob a logomarca, por exemplo. Opaco de propósito: um branco translúcido
+   * varia com o fundo e já reprovou no piso de 4,5:1. Tinta clara do azul da
+   * logo: mede 11,43:1 no topo do degradê e 7,33:1 na base — folgado nos dois
+   * extremos.
    */
-  textoSobreEscuro: '#CBD5DD',
+  textoSobreEscuro: '#D3D3F5',
   /**
    * Borda **decorativa** — divisória, contorno de cartão, separador de
    * tabela. Não carrega informação, logo não precisa de contraste (mede
@@ -57,15 +73,14 @@ export const paleta = {
    */
   bordaControle: '#788A97',
   /**
-   * Superfície do avatar de identidade (guia do cliente; change
-   * `menu-lateral-e-barra-superior`, design.md D7). Carrega `texto`, a
-   * 11,12:1 — e **nunca** branco, que mede 1,54:1 e reprova no piso de
-   * 4,5:1. É a mesma armadilha de `verdeMarca`: a cor vem do guia, e quem
-   * decide o que vai escrito sobre ela é o piso de acessibilidade. Como
-   * superfície, mede 5,29:1 contra a base do degradê da navegação, acima do
-   * piso de 3:1 de elemento de interface.
+   * Superfície do avatar de identidade (change `menu-lateral-e-barra-superior`,
+   * design.md D7) — tinta clara do azul da logo. Carrega `texto`, a 10,19:1 —
+   * e **nunca** branco, que mede 1,68:1 e reprova no piso de 4,5:1. É a mesma
+   * armadilha de `verdeMarca`: quem decide o que vai escrito sobre a cor é o
+   * piso de acessibilidade. Como superfície, mede 6,34:1 contra a base do
+   * degradê da navegação, acima do piso de 3:1 de elemento de interface.
    */
-  azulAvatar: '#9ED8F6',
+  azulAvatar: '#C4C3F5',
   /**
    * Vermelho do **indicador numérico** do sino (`docs/demanda_cliente_3.md`,
    * item 10; change `marca-dagua-e-inicio-rodada-3`, design.md D7). Carrega o
@@ -222,7 +237,7 @@ export const RAIO_CONTROLE = 10;
 export const RAIO_SUPERFICIE = 14;
 
 /**
- * Degradê da navegação lateral — azul-marinho escuro ao topo, claro à base.
+ * Degradê da navegação lateral — índigo profundo ao topo, o azul da logo à base.
  * Vive aqui, e não na tela, para que `AppShell` não declare cor de marca por
  * literal (requisito "Tokens de apresentação têm origem única").
  */
@@ -262,9 +277,9 @@ export const theme: ThemeConfig = {
       headerBg: paleta.branco,
       bodyBg: paleta.superficie,
     },
-    // Item ativo: pílula no verde da marca com rótulo e ícone escuros
-    // (design.md D2) — 7,77:1, contra os 2,21:1 que o rótulo branco do
-    // desenho de referência produziria.
+    // Item ativo: pílula na cor de destaque da marca (laranja) com rótulo e
+    // ícone escuros (design.md D2) — 6,73:1, contra os 2,55:1 que um rótulo
+    // branco produziria.
     Menu: {
       darkItemBg: 'transparent',
       darkSubMenuItemBg: 'transparent',
@@ -272,7 +287,7 @@ export const theme: ThemeConfig = {
       // `menu-lateral-e-barra-superior`, design.md D2. O padrão do design
       // system é um branco translúcido, da mesma natureza do branco a 65%
       // que `identidade-visual-isetes` já teve de substituir por reprovar no
-      // piso: o tom opaco mede 5,48:1 na base do degradê e 10,58:1 no topo.
+      // piso: o tom opaco mede 7,33:1 na base do degradê e 11,43:1 no topo.
       darkGroupTitleColor: paleta.textoSobreEscuro,
       // Altura do item **declarada**, não derivada (design.md D8). O design
       // system a deriva de `controlHeightLG` (= `controlHeight` × 1,25 = 55px
@@ -330,8 +345,9 @@ export const theme: ThemeConfig = {
  *    none` — ele **recebe** o foco e nada muda na tela, que é precisamente o
  *    que o requisito "Navegação por teclado revela o elemento focado"
  *    proíbe. O anel é declarado por superfície: azul sobre fundo claro
- *    (8,06:1) e verde da marca sobre a navegação escura (7,77:1) — nenhuma
- *    cor única alcança o piso de 3:1 nos dois fundos ao mesmo tempo.
+ *    (12,29:1) e o laranja de destaque sobre a navegação escura (4,19:1 na
+ *    base, 6,54:1 no topo) — nenhuma cor única alcança o piso de 3:1 nos dois
+ *    fundos ao mesmo tempo.
  * 4. **Container query.** A grade dos atalhos da tela inicial decide as
  *    colunas pela largura da própria área; estilo em linha não declara
  *    `@container`.

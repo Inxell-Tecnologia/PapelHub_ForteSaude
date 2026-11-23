@@ -12,7 +12,7 @@ import { BrandMark } from '../shell/BrandMark';
 /**
  * Cor de marca da tela de login (change `identidade-visual-isetes`,
  * design.md D4): vem da **paleta da identidade** — não é mais amostrada da
- * arte da logomarca, como na versão anterior. Mede 15,76:1 contra branco,
+ * arte da logomarca, como na versão anterior. Mede 16,66:1 contra branco,
  * acima do mínimo AAA de 7:1 que a spec exige, e o par é apurado por
  * cálculo em `__tests__/contraste.test.ts`, nunca por inspeção visual.
  */
@@ -111,7 +111,7 @@ export function LoginPage() {
       }}
     >
       <div style={{ display: 'flex', justifyContent: isNarrow ? 'center' : 'flex-start' }}>
-        {/* Logo branca do Instituto SETES, **decorativa**: o heading logo
+        {/* Logo negativa da Forte Saúde, **decorativa**: o heading logo
             abaixo é o nome acessível, e a identificação do cliente segue em
             texto — o requisito "Identificação do cliente não contamina o nome
             acessível do título" exige que o nome acessível do heading seja

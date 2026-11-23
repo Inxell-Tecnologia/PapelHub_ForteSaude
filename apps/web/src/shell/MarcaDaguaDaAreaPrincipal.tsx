@@ -12,25 +12,35 @@ import { ATIVOS_DA_MARCA } from './BrandMark';
  * `superficie`, contra os textos que aparecem direto sobre o fundo:
  *
  *   opacidade   textoApoio   texto     azulLink   verdeAcao (texto)
- *     0%          5,85:1     15,92:1    7,48:1      4,98:1
- *     6%          5,44:1     14,81:1    6,96:1      4,63:1   ← adotada
- *     8%          5,29:1     14,39:1    6,76:1      4,50:1
- *    10%          5,16:1     14,04:1    6,60:1      4,39:1 ✗
+ *     0%          5,85:1     15,92:1   11,40:1      5,35:1
+ *     6%          5,24:1     14,26:1   10,21:1      4,79:1   ← adotada
+ *     8%          5,06:1     13,77:1    9,86:1      4,63:1
+ *    10%          4,88:1     13,29:1    9,52:1      4,46:1 ✗
+ *
+ * Reapurada com a paleta e o símbolo da Forte Saúde (change
+ * `identidade-visual-fortesaude`, design.md D3 e D5): é este par que fixa o
+ * tom do laranja de ação — um laranja mais claro reprovaria já a 6%.
  *
  * Os cartões são opacos e ficam **por cima**: o texto deles não muda. O teste
  * de contraste refaz a conta a partir desta constante.
  */
 export const OPACIDADE_MARCA_DAGUA_AREA_PRINCIPAL = 0.06;
 
-/** Pixel opaco mais escuro do símbolo servido — o pior caso sobre fundo claro. */
-export const COR_MAIS_ESCURA_DO_SIMBOLO = '#008C5A';
+/**
+ * Pixel opaco mais escuro do símbolo **colorido** servido — o pior caso sobre
+ * fundo claro. Medido no ativo gerado (o azul da logo, `#2121B7`, após a
+ * reamostragem).
+ */
+export const COR_MAIS_ESCURA_DO_SIMBOLO = '#2020B6';
 
 /** Altura do símbolo: acompanha telas baixas, com teto no desenho do mockup. */
 const ALTURA_MARCA_DAGUA = 'min(70vh, 560px)';
 
 /**
  * Símbolo decorativo à direita da área principal, em **todas** as telas do
- * shell autenticado — montado uma vez no `AppShell`, logo nunca no login.
+ * shell autenticado — montado uma vez no `AppShell`, logo nunca no login. É a
+ * versão **colorida** do símbolo: o fundo aqui é claro (change
+ * `identidade-visual-fortesaude`, design.md D2).
  *
  * Camada **fixa** cobrindo só a área principal (abaixo da barra superior, à
  * direita da navegação): acompanha a viewport, não a altura da página, e, como
@@ -59,7 +69,7 @@ export function MarcaDaguaDaAreaPrincipal({ esquerda }: { esquerda: number }) {
       }}
     >
       <img
-        src={ATIVOS_DA_MARCA.simbolo.src}
+        src={ATIVOS_DA_MARCA.simboloSobreClaro.src}
         alt=""
         style={{
           position: 'absolute',
@@ -67,7 +77,7 @@ export function MarcaDaguaDaAreaPrincipal({ esquerda }: { esquerda: number }) {
           right: 0,
           height: ALTURA_MARCA_DAGUA,
           width: 'auto',
-          aspectRatio: `${ATIVOS_DA_MARCA.simbolo.proporcao}`,
+          aspectRatio: `${ATIVOS_DA_MARCA.simboloSobreClaro.proporcao}`,
           // ~⅓ do símbolo sai pela borda direita, como no mockup.
           transform: 'translate(33%, -50%)',
           opacity: OPACIDADE_MARCA_DAGUA_AREA_PRINCIPAL,
