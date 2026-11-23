@@ -52,6 +52,12 @@
 
 ## 5. Implantação em produção (Cloud Shell + GitHub, nesta ordem)
 
+> **Arquivado em 23/11/2026 com esta seção aberta, por decisão.** O código e a
+> documentação (seções 1–4) estão prontos; estas tarefas são operação em
+> produção, fora do alcance do ambiente de desenvolvimento, e seguem como
+> checklist do PR. Até concluí-las, o passo novo do deploy falha (variável
+> vazia) **depois** de o serviço ser implantado — inócuo, mas vermelho.
+
 - [ ] 5.1 Com a branch do PR em checkout no Cloud Shell: `terraform plan`.
       Esperado: **só criações** — 4 `deployer_run_developer_jobs` e 3
       `deployer_act_as_job_runtime` — mais o output novo, e as alterações
