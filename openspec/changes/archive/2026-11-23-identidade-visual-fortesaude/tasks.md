@@ -55,5 +55,5 @@
 - [x] 5.1 `npm run lint`, `npm run build`, `npm run test`, `npm run format:check`.
 - [x] 5.2 Subir a SPA e capturar login e shell (expandido e colapsado) para
       inspeção visual.
-- [ ] 5.3 Ao arquivar: atualizar o _Purpose_ de `identidade-visual`, que ainda
+- [x] 5.3 Ao arquivar: atualizar o _Purpose_ de `identidade-visual`, que ainda
       cita o Instituto SETES como logomarca oficial.

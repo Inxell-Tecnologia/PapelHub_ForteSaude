@@ -4,7 +4,7 @@
 
 Definir os requisitos verificáveis da identidade visual do produto — o nome
 comercial da aplicação (**PapelHub**), a logomarca oficial e a identificação do
-cliente da implantação (ex.: **SETES**) — como propriedade **configurada por
+cliente da implantação (ex.: **Forte Saúde**) — como propriedade **configurada por
 implantação**, entregue ao SPA por um endpoint público restrito a branding
 (porque a tela onde ela aparece é anterior ao login), exibida na tela de login
 e no shell autenticado sem contaminar o nome acessível do heading, e
@@ -13,11 +13,13 @@ configuração está ausente ou indisponível. Não decorre de uma US do PRD
 (`docs/prd_final.md`) — é um pedido direto do cliente sobre nome comercial,
 logomarca e identificação da organização. Onde toca comportamento já
 normatizado, preserva-o: o nome acessível do heading de login continua sendo o
-nome da aplicação puro, conforme a US 1.2. A logomarca oficial é a logo branca do
-Instituto SETES, de fundo transparente, apresentada sem moldura e apenas sobre
-os fundos escuros da marca; o símbolo isolado representa a marca na navegação
-colapsada, no favicon e como marca d'água (change
-`identidade-isetes-e-menu-compacto`).
+nome da aplicação puro, conforme a US 1.2. A logomarca oficial é a versão
+negativa da logo da Forte Saúde, de fundo transparente, apresentada sem moldura
+e apenas sobre os fundos escuros da marca; o símbolo isolado representa a marca
+na navegação colapsada, no favicon e como marca d'água, em versão negativa sobre
+fundo escuro e colorida sobre fundo claro. Os ativos são derivados das artes do
+cliente por procedimento versionado (changes `identidade-isetes-e-menu-compacto`
+e `identidade-visual-fortesaude`).
 
 ## Requirements
 
@@ -66,15 +68,16 @@ objeto deste requisito.
 
 ### Requirement: Logomarca oficial é exibida na tela de login e no shell expandido
 
-A aplicação SHALL exibir a logomarca oficial — a logo **branca** do Instituto
-SETES, de fundo transparente — na tela de login e no shell autenticado com a
-navegação expandida. A logomarca SHALL ser apresentada apenas sobre os fundos
-escuros da marca (o degradê da navegação e o campo escuro da tela de login), e
-NÃO SHALL ser exibida sobre fundo claro. Por ter fundo transparente, ela NÃO
-SHALL receber moldura própria.
+A aplicação SHALL exibir a logomarca oficial — a **versão negativa** da logo da
+Forte Saúde, de fundo transparente — na tela de login e no shell autenticado com
+a navegação expandida.
+A logomarca SHALL ser apresentada apenas sobre os fundos escuros da marca (o
+degradê da navegação e o campo escuro da tela de login), e NÃO SHALL ser
+exibida sobre fundo claro. Por ter fundo transparente, ela NÃO SHALL receber
+moldura própria.
 
-Referência: `docs/demanda_cliente_3.md`, item 1; dependência externa E1 de
-`docs/plano_demanda_cliente_2.md`.
+Referência: `docs/demanda_cliente_3.md`, item 1; change
+`identidade-visual-fortesaude`, design.md D2.
 
 #### Scenario: Logomarca aparece na tela de login
 - **WHEN** uma pessoa não autenticada abre a tela de login
@@ -484,3 +487,24 @@ A aplicação SHALL apresentar o símbolo da marca como marca d'água no lado di
 - **THEN** o contraste do texto apresentado diretamente sobre o fundo da área
   principal, contra a mistura desse fundo com o ponto mais escuro do símbolo, é
   apurado numericamente e atende ao piso de 4,5:1
+
+### Requirement: Ativos da marca são derivados das artes do cliente
+
+Os ativos da marca SHALL ser derivados das artes fornecidas pelo cliente por um
+procedimento versionado e reproduzível, e NÃO SHALL ser editados à mão. O
+símbolo isolado da marca SHALL existir em duas versões — negativa, para os
+fundos escuros, e colorida, para os fundos claros —, e cada superfície SHALL
+usar a versão correspondente ao seu fundo.
+
+Referência: change `identidade-visual-fortesaude`, design.md D1 e D2.
+
+#### Scenario: Símbolo usa a versão adequada ao fundo
+- **WHEN** o símbolo da marca é apresentado sobre a navegação escura e sobre a
+  área principal clara
+- **THEN** sobre a navegação aparece a versão negativa, e sobre a área principal
+  a versão colorida
+
+#### Scenario: Ativos são regeráveis a partir das artes do cliente
+- **WHEN** o cliente substitui as artes de origem da marca
+- **THEN** os ativos da aplicação são regerados pelo procedimento versionado, sem
+  edição manual de imagem
