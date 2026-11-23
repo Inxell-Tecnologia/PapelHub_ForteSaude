@@ -91,15 +91,16 @@ Secrets and variables → Actions → _Variables_ — não são segredos: acesso
 controlado pela condição do WIF + IAM, não por elas serem secretas) com os
 outputs deste Terraform:
 
-| Variável do repositório          | Valor (`terraform output ...`)                                                                                                                        |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GCP_PROJECT_ID`                 | `var.project_id` (o mesmo de `terraform.tfvars`)                                                                                                      |
-| `GCP_REGION`                     | `var.region`                                                                                                                                          |
-| `GCP_ARTIFACT_REPOSITORY`        | `artifact_registry_repository`                                                                                                                        |
-| `GCP_CLOUD_RUN_SERVICE`          | nome do serviço (`google_cloud_run_v2_service.api.name`, também visível prefixado em `api_url`)                                                       |
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | `github_actions_workload_identity_provider`                                                                                                           |
-| `GCP_DEPLOYER_SERVICE_ACCOUNT`   | `github_actions_deployer_service_account`                                                                                                             |
-| `GCP_MIGRATE_JOB`                | `migrate_job_name` — nome do Cloud Run Job de migração (change `deploy-migrations-e-docs-only`), executado pelo pipeline antes do `gcloud run deploy` |
+| Variável do repositório          | Valor (`terraform output ...`)                                                                                                                                                                |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GCP_PROJECT_ID`                 | `var.project_id` (o mesmo de `terraform.tfvars`)                                                                                                                                              |
+| `GCP_REGION`                     | `var.region`                                                                                                                                                                                  |
+| `GCP_ARTIFACT_REPOSITORY`        | `artifact_registry_repository`                                                                                                                                                                |
+| `GCP_CLOUD_RUN_SERVICE`          | nome do serviço (`google_cloud_run_v2_service.api.name`, também visível prefixado em `api_url`)                                                                                               |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | `github_actions_workload_identity_provider`                                                                                                                                                   |
+| `GCP_DEPLOYER_SERVICE_ACCOUNT`   | `github_actions_deployer_service_account`                                                                                                                                                     |
+| `GCP_MIGRATE_JOB`                | `migrate_job_name` — nome do Cloud Run Job de migração (change `deploy-migrations-e-docs-only`), executado pelo pipeline antes do `gcloud run deploy`                                         |
+| `GCP_DEPLOY_UPDATED_JOBS`        | `deploy_updated_job_names` — Jobs cuja imagem o deploy alinha à do serviço depois do `gcloud run deploy`, sem executá-los (change `deploy-atualiza-jobs-agendados`); vazia faz o passo falhar |
 
 Sem chave de service account em lugar nenhum — `cicd.tf` provisiona um
 Workload Identity Pool que só aceita tokens OIDC do repositório configurado

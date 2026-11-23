@@ -48,6 +48,11 @@ output "migrate_job_name" {
   value       = google_cloud_run_v2_job.migrate.name
 }
 
+output "deploy_updated_job_names" {
+  description = "Jobs cuja imagem o deploy alinha à do serviço, separados por espaço — valor para a variável de repositório GCP_DEPLOY_UPDATED_JOBS do GitHub Actions (change deploy-atualiza-jobs-agendados)."
+  value       = join(" ", [for k in sort(keys(local.deploy_updated_jobs)) : local.deploy_updated_jobs[k].job.name])
+}
+
 output "github_actions_workload_identity_provider" {
   description = "Valor para o secret/var GCP_WORKLOAD_IDENTITY_PROVIDER do GitHub Actions (ver .github/workflows/deploy.yml)."
   value       = google_iam_workload_identity_pool_provider.github.name

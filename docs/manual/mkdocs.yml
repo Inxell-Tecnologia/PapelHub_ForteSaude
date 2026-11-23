@@ -34,6 +34,11 @@ theme:
     - search.suggest
     - content.action.edit
 
+# Caixas de aviso (`!!! note`, `!!! warning`…): 34 delas em 13 páginas eram
+# renderizadas como texto literal, porque a extensão nunca foi habilitada.
+markdown_extensions:
+  - admonition
+
 extra_css:
   - stylesheets/marca.css
 
