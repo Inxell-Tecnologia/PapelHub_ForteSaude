@@ -42,8 +42,8 @@
 
 ## 7. Integração
 
-- [ ] 7.1 Rodar `npm run build`, `npm run test` e `npm run lint` na raiz, todos verdes
-- [ ] 7.2 Validar o change com `openspec validate edicao-email-pessoa --strict`
+- [x] 7.1 Rodar `npm run build`, `npm run test` e `npm run lint` na raiz, todos verdes
+- [x] 7.2 Validar o change com `openspec validate edicao-email-pessoa --strict`
 
 ## Workflow follow-up
 

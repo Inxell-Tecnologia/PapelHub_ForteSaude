@@ -124,6 +124,10 @@ O predicado de isolamento é o mesmo das demais tabelas
 afeta 0 linhas. Isso torna "só de inclusão" testável na CI sem depender de
 `GRANT`/`REVOKE` por papel, que difere entre dev, CI e prod.
 
+Soma-se, como em toda tabela de unidade desde a migration `0026`, a policy
+restritiva `shared_visitor_no_insert`: a transação de visita entre unidades é
+somente leitura e não grava registro administrativo.
+
 *Alternativa descartada:* só não expor rota de alteração. Deixaria a garantia na
 disciplina do código, não no banco — contra a regra do repositório para
 isolamento.
