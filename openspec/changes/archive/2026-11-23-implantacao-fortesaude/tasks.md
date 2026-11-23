@@ -220,34 +220,34 @@
 
 ### Fase 5 — segundo `terraform apply` (CORS e Pub/Sub)
 
-- [ ] 7.5.1 `terraform.tfvars`: `cors_allowed_origins` com **as duas** formas de
+- [x] 7.5.1 `terraform.tfvars`: `cors_allowed_origins` com **as duas** formas de
   URL de 7.1.5. Faltando uma, o upload falha com "Falha no envio." e erro de CORS
   no console quando a SPA é aberta pela forma ausente.
-- [ ] 7.5.2 `terraform.tfvars`: `pubsub_push_audience` =
+- [x] 7.5.2 `terraform.tfvars`: `pubsub_push_audience` =
   `<api_url>/internal/storage-events`. Só agora — a imagem com o validador OIDC
   já está publicada (Fase 3); invertido, todo push válido vira 401.
-- [ ] 7.5.3 `terraform apply`
-- [ ] 7.5.4 Conferir que o `lifecycle.ignore_changes` preservou a imagem real do
+- [x] 7.5.3 `terraform apply`
+- [x] 7.5.4 Conferir que o `lifecycle.ignore_changes` preservou a imagem real do
   serviço — o `apply` **não** deve reverter para a placeholder.
 
 ### Fase 6 — validação funcional
 
-- [ ] 7.6.1 Abrir a URL do Cloud Run: a tela de login mostra a logomarca, o
+- [x] 7.6.1 Abrir a URL do Cloud Run: a tela de login mostra a logomarca, o
   título **PapelHub** e, abaixo, **Forte Saúde**. Conferir a acentuação; se
   estiver corrompida, corrigir por
   `gcloud run services update papelhub-prod-api --set-env-vars APP_CLIENT_NAME="Forte Saúde"`
   — não exige rebuild (design.md D2).
-- [ ] 7.6.2 Com a URL confirmada, preencher o endereço desta implantação em
+- [x] 7.6.2 Com a URL confirmada, preencher o endereço desta implantação em
   `docs/manual/docs/index.md` (tarefa 4.2) e integrar. Esse commit toca só
   `docs/` — corretamente classificado como sem efeito em produção, e o `docs.yml`
   republica o site.
-- [ ] 7.6.3 Entrar com `admin@papelhub.com`. Conferir: shell expandido mostra
+- [x] 7.6.3 Entrar com `admin@papelhub.com`. Conferir: shell expandido mostra
   **Forte Saúde** sob a marca; aba do navegador mostra `PapelHub - Forte Saúde`;
   rodapé leva ao manual em `inxell-tecnologia.github.io/PapelHub_ForteSaude/`.
-- [ ] 7.6.4 Enviar um arquivo de teste — valida CORS (7.5.1), URL assinada e
+- [x] 7.6.4 Enviar um arquivo de teste — valida CORS (7.5.1), URL assinada e
   reconciliação de cota pelo push do Pub/Sub (7.5.2). Conferir que o espaço usado
   na tela de envio reflete o arquivo.
-- [ ] 7.6.5 Cadastrar as pessoas reais pela tela **Pessoas**. Confirmar que
+- [x] 7.6.5 Cadastrar as pessoas reais pela tela **Pessoas**. Confirmar que
   **não** existem contas de demonstração (`colaborador.a@…`, `admin.a@…`) — o
   seed é travado em produção, mas conferir é barato.
 
@@ -273,7 +273,7 @@
 
 ## 9. Pendências descobertas na implementação
 
-- [ ] 9.1 **No arquivamento** (`/opsx:archive`): o `## Purpose` de
+- [x] 9.1 **No arquivamento** (`/opsx:archive`): o `## Purpose` de
   `openspec/specs/identidade-visual/spec.md` cita `SETES` como exemplo
   ("identificação do cliente da implantação (ex.: **SETES**)"). O mecanismo de
   delta substitui **blocos de requisito** — `Purpose` não é alcançado por um
@@ -281,7 +281,7 @@
   `Purpose` num delta sem `ADDED`; verificado). Corrigir a prosa para
   `Forte Saúde` no mesmo commit do arquivamento, senão o registro consolidado
   fica citando o cliente anterior.
-- [ ] 9.2 **Defeito corrigido durante a implementação, registrado para não
+- [x] 9.2 **Defeito corrigido durante a implementação, registrado para não
   reaparecer:** a primeira redação da descrição de `var.app_name` continha
   `` `${project_id}-${name_prefix}-files` `` dentro de um heredoco `<<-EOT`.
   Terraform **interpola** `${...}` em heredoc, e `project_id` não é referência
@@ -326,7 +326,7 @@ secret e as concessões já existiam.
   (`gcloud services enable serviceusage cloudresourcemanager iam iamcredentials`)
   e o registro de que API recém-habilitada demora a propagar — uma retentativa
   do primeiro `apply` é esperada, não sintoma de erro de configuração.
-- [ ] 10.4 **Rodar `terraform fmt -check` e `validate` na próxima sessão com
+- [x] 10.4 **Rodar `terraform fmt -check` e `validate` na próxima sessão com
   Terraform instalado** (pendência herdada da tarefa 8.4). As edições de 10.1 e
   10.2 foram parseadas com `python-hcl2`, o que confirma sintaxe mas **não**
   resolve referências — um nome de recurso errado num `depends_on` só aparece no
@@ -418,3 +418,8 @@ secret e as concessões já existiam.
   a cada deploy — ou seja, divergem da imagem do serviço por padrão. Fora de
   escopo desta fatia (já era pendência registrada no README da fundação), mas
   agora com custo conhecido: foi o que quebrou a Fase 4.
+      > **Não feita — transferida.** Arquivado em 23/11/2026 com esta tarefa
+      > aberta, por decisão: é mudança de CI/CD (`deploy.yml` + `run.developer`
+      > da conta de deploy nos Jobs agendados, com `terraform apply`) e merece
+      > change próprio. Até lá, cada deploy exige o laço `gcloud run jobs update`
+      > do runbook (Fase 4, passo 6; "Atualização de uma implantação no ar").
