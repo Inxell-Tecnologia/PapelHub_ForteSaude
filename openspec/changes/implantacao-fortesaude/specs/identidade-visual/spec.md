@@ -50,8 +50,8 @@ produto sem que um exija o outro.
 #### Scenario: Shell autenticado apresenta a marca em ambos os estados
 - **WHEN** uma pessoa autenticada visualiza o shell com a navegação expandida e
   depois colapsada
-- **THEN** a marca apresenta o nome **PapelHub** no estado expandido e uma
-  forma abreviada equivalente no estado colapsado
+- **THEN** a marca apresenta o nome **PapelHub** em texto no estado expandido e,
+  no estado colapsado, o símbolo da marca cujo nome acessível é **PapelHub**
 
 #### Scenario: Grafia do prefixo de infraestrutura não alcança o nome exibido
 - **WHEN** o prefixo de nomes dos recursos de nuvem da implantação usa uma grafia
