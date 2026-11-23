@@ -50,7 +50,7 @@ resource "google_cloud_run_v2_job" "trash_purge" {
       }
 
       containers {
-        image   = var.api_image
+        image = var.api_image
         # Caminho relativo ao WORKDIR `/app` do Dockerfile, que copia o build
         # da API para `/app/apps/api/dist` — mesma forma do CMD
         # (`apps/api/dist/server.js`) e dos Jobs de migração e bootstrap.
@@ -426,7 +426,7 @@ resource "google_cloud_run_v2_job" "notify_readings" {
         # (commit ffbcbec, change implantacao-fortesaude). O upstream trouxe
         # este Job com `dist/jobs/...`, que não existe na imagem: falharia com
         # "Cannot find module" toda noite às 03:45, em silêncio.
-        args    = ["apps/api/dist/jobs/notify-readings.js"]
+        args = ["apps/api/dist/jobs/notify-readings.js"]
 
         resources {
           limits = {
@@ -488,6 +488,12 @@ resource "google_cloud_run_v2_job" "notify_readings" {
     }
   }
 
+  # Mesmo racional dos Jobs de expurgo e de avisos de permissão: Job não guarda
+  # dado, e com o default `true` um `create` que falha na espera vira impasse
+  # (runbook, Armadilha 7). O upstream trouxe este Job sem a flag; ela estava
+  # ausente no primeiro apply em produção, que caiu exatamente nesse impasse.
+  deletion_protection = false
+
   lifecycle {
     ignore_changes = [template[0].template[0].containers[0].image]
   }
@@ -495,6 +501,11 @@ resource "google_cloud_run_v2_job" "notify_readings" {
   depends_on = [
     google_project_service.required,
     google_secret_manager_secret_version.database_url,
+    # Mesma aresta dos outros Jobs agendados: sem ela, o Job é criado em
+    # paralelo com a concessão de secretAccessor da sua própria service account
+    # e a criação falha com `Error code 9 ... Permission denied on secret`. Foi
+    # o que aconteceu no primeiro apply deste Job em produção (novembro de 2026).
+    google_secret_manager_secret_iam_member.notify_readings_database_url,
   ]
 }
 
