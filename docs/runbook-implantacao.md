@@ -351,6 +351,7 @@ Federation + IAM, não o sigilo destes valores — ver
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | output `github_actions_workload_identity_provider` |
 | `GCP_DEPLOYER_SERVICE_ACCOUNT`   | output `github_actions_deployer_service_account`   |
 | `GCP_MIGRATE_JOB`               | `papelhub-prod-migrate`                            |
+| `GCP_DEPLOY_UPDATED_JOBS`       | output `deploy_updated_job_names` (nomes separados por espaço) |
 
 Sem chave de service account em lugar nenhum: o pool só aceita tokens OIDC do
 repositório em `var.github_repository`. Se esse valor não for
@@ -477,7 +478,11 @@ não tem auto-registro. O Job
    no-op por já existir um `global_admin`.
 
 6. **Atualizar também a imagem dos Jobs agendados.** Mesma situação: nasceram com
-   o placeholder e o CI/CD não os toca. Sem isto, o expurgo da lixeira (03:00) e
+   o placeholder. Desde o change `deploy-atualiza-jobs-agendados`, **todo deploy
+   faz isto sozinho** (passo "Update scheduled and bootstrap job images" do
+   `deploy.yml`, com a lista de `GCP_DEPLOY_UPDATED_JOBS`); o laço abaixo é para
+   quando os Jobs são criados **antes** do primeiro deploy, como aqui, ou para
+   recuperar um deploy que ficou vermelho nesse passo. Sem isto, o expurgo da lixeira (03:00) e
    os avisos de expiração (03:30) falham silenciosamente todas as noites — são
    agendados, ninguém olha, e só se percebe quando a lixeira não expurga.
 
@@ -614,8 +619,9 @@ Ordem — cada passo depende do anterior:
 3. **`terraform apply`.** A variável nova no serviço gera uma revisão com a
    imagem que o CI/CD publicou (a imagem é `ignore_changes`, o `apply` não a
    reverte).
-4. **Imagem do Job novo.** Ele nasce com `var.api_image` e o CI/CD não o
-   atualiza (mesma situação da Fase 4, passo 6):
+4. **Imagem do Job novo.** Ele nasce com `var.api_image`. Se ele entrou no mapa
+   `deploy_updated_jobs` e na variável `GCP_DEPLOY_UPDATED_JOBS`, o **próximo**
+   deploy o alinha; até lá — o `apply` vem depois do deploy — alinhe à mão:
 
    ```bash
    gcloud run jobs update papelhub-prod-notify-readings \
@@ -852,6 +858,11 @@ vem sem elas — foi o caso do `notify-readings`, cujo primeiro apply falhou com
   de `deletion_protection = false`, da aresta para o seu
   `google_secret_manager_secret_iam_member`, e de `args` com o prefixo
   `apps/api/dist/` (o caminho do upstream, `dist/...`, não existe na imagem).
+  Se reusa a imagem da aplicação, também precisa de **uma linha no mapa
+  `deploy_updated_jobs`** (`locals.tf`), que já lhe dá a permissão do pipeline,
+  e de **atualizar `GCP_DEPLOY_UPDATED_JOBS`** no GitHub com
+  `terraform output -raw deploy_updated_job_names` depois do `apply`. Sem isso
+  o deploy não o alinha, e não há erro que denuncie.
 - **Se o apply já falhou:** saída da Armadilha 7 — `gcloud run jobs delete`,
   `terraform state rm` e novo `apply` com o código corrigido.
 

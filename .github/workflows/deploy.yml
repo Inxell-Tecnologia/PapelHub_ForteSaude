@@ -174,3 +174,37 @@ jobs:
             --region "${{ vars.GCP_REGION }}" \
             --image "${IMAGE}:${TARGET_SHA}" \
             --quiet
+
+      # Alinha à imagem recém-implantada os demais Jobs que reusam a imagem da
+      # aplicação — bootstrap e os agendados (change
+      # deploy-atualiza-jobs-agendados). Antes, só o de migração avançava, e os
+      # outros ficavam na imagem com que nasceram até um `gcloud` manual: foi o
+      # que quebrou o bootstrap na Fase 4 e deixou o notify-readings no
+      # placeholder em 23/11/2026.
+      #
+      # DEPOIS do deploy (design.md D3): falha aqui não impede o serviço de
+      # receber a correção; deixa o workflow vermelho, nomeando o Job. Só
+      # ATUALIZA — nunca executa: o trash-purge apaga dados definitivamente e os
+      # de aviso mandam notificações; eles rodam no horário deles.
+      #
+      # A lista vem do output `deploy_updated_job_names` do Terraform, origem
+      # única das permissões por Job (infra/terraform/locals.tf). Vazia = erro,
+      # não sucesso silencioso (design.md D4).
+      - name: Update scheduled and bootstrap job images
+        env:
+          JOBS: ${{ vars.GCP_DEPLOY_UPDATED_JOBS }}
+        run: |
+          set -euo pipefail
+          if [ -z "${JOBS// /}" ]; then
+            echo "::error::GCP_DEPLOY_UPDATED_JOBS vazia: preencha a variável de repositório com o output \`terraform output -raw deploy_updated_job_names\`."
+            exit 1
+          fi
+          for JOB in $JOBS; do
+            echo "Atualizando a imagem do Job ${JOB} para ${IMAGE}:${TARGET_SHA}"
+            gcloud run jobs update "$JOB" \
+              --project "${{ vars.GCP_PROJECT_ID }}" \
+              --region "${{ vars.GCP_REGION }}" \
+              --image "${IMAGE}:${TARGET_SHA}" \
+              --quiet \
+              || { echo "::error::Falha ao atualizar a imagem do Job ${JOB}."; exit 1; }
+          done

@@ -89,3 +89,29 @@ resource "google_cloud_run_v2_job_iam_member" "deployer_run_developer_migrate_jo
   role     = "roles/run.developer"
   member   = "serviceAccount:${google_service_account.deployer.email}"
 }
+
+# Atualizar a imagem dos demais Jobs que reusam a imagem da aplicação (change
+# deploy-atualiza-jobs-agendados, design.md D2). Mesmo papel e mesmo escopo
+# POR RECURSO da concessão do Job de migração acima: nada de alcance de
+# projeto. `run.developer` também permitiria executar — quem garante que o
+# pipeline só ATUALIZA é o deploy.yml (design.md D3).
+resource "google_cloud_run_v2_job_iam_member" "deployer_run_developer_jobs" {
+  for_each = local.deploy_updated_jobs
+
+  project  = var.project_id
+  location = var.region
+  name     = each.value.job.name
+  role     = "roles/run.developer"
+  member   = "serviceAccount:${google_service_account.deployer.email}"
+}
+
+# `gcloud run jobs update` exige agir como a service account de runtime do Job.
+# Os Jobs agendados rodam com contas próprias, que `deployer_act_as_api` não
+# alcança (design.md D2).
+resource "google_service_account_iam_member" "deployer_act_as_job_runtime" {
+  for_each = local.deploy_job_runtime_sas
+
+  service_account_id = each.value[0]
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.deployer.email}"
+}
