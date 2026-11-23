@@ -32,7 +32,8 @@ As **duas** formas de URL acima são a mesma Cloud Run. Ambas precisam constar e
 
 Recursos derivados do prefixo: serviço `papelhub-prod-api`; Jobs
 `papelhub-prod-migrate`, `papelhub-prod-bootstrap`, `papelhub-prod-trash-purge`,
-`papelhub-prod-notify-grants`; instância `papelhub-prod-pg`; bucket de arquivos
+`papelhub-prod-notify-grants`, `papelhub-prod-notify-readings` (este a partir do
+sync com o upstream — ver "Atualização de uma implantação no ar"); instância `papelhub-prod-pg`; bucket de arquivos
 `fortesaude-papelhub-papelhub-prod-files`; secrets `papelhub-prod-database-url`,
 `papelhub-prod-auth-session-secret`, `papelhub-prod-bootstrap-admin-password`.
 
@@ -481,13 +482,13 @@ não tem auto-registro. O Job
    agendados, ninguém olha, e só se percebe quando a lixeira não expurga.
 
    ```bash
-   for J in papelhub-prod-trash-purge papelhub-prod-notify-grants; do
+   for J in papelhub-prod-trash-purge papelhub-prod-notify-grants papelhub-prod-notify-readings; do
      gcloud run jobs update "$J" --image "${IMAGE}:latest" \
        --project="$PROJECT_ID" --region="$REGION"
    done
    ```
 
-   > **`terraform apply` NÃO resolve isto.** Os quatro Jobs declaram
+   > **`terraform apply` NÃO resolve isto.** Os Jobs declaram
    > `lifecycle.ignore_changes` no campo da imagem, para que um `apply` de rotina
    > não reverta o que o CI/CD publicou. O efeito colateral é que mudar
    > `var.api_image` também não os atualiza: o atributo é ignorado nos dois
@@ -587,6 +588,58 @@ dependem da URL criada na Fase 1 e da imagem publicada na Fase 3.
    produção no seed impede que sejam criadas, mas conferir é barato.
 
 ---
+
+## Atualização de uma implantação no ar
+
+As seis fases acima provisionam um projeto vazio. Esta seção é para **depois**:
+integrar na `main` uma mudança que altera o Terraform de uma implantação que já
+atende usuários. O caso de referência é o sync com o upstream de novembro de
+2026 (merge `65904b4`), que trouxe 11 migrations (`0016`–`0026`), a variável
+`APP_SUPPORT_CONTACT` no serviço e um Job agendado novo,
+`papelhub-prod-notify-readings` (avisos de leitura obrigatória, 03:45).
+
+Ordem — cada passo depende do anterior:
+
+1. **Merge na `main`** (merge commit). O `deploy.yml` publica a imagem, executa o
+   Job de migração com as migrations novas e implanta a revisão nova do
+   serviço. Conferir no Actions que o run terminou verde — e, nos logs do Job de
+   migração, que as migrations novas foram **aplicadas**, não puladas.
+2. **`terraform plan`** em `infra/terraform`. O esperado é **só adição** e
+   atualização no lugar: conta de serviço, IAM, Job e agendamento
+   `notify-readings`, e a variável de ambiente nova no serviço. **Qualquer
+   `destroy` ou `must be replaced` é motivo para parar** — com a `name_prefix`
+   congelada, nada desta classe de mudança deveria recriar recurso.
+3. **`terraform apply`.** A variável nova no serviço gera uma revisão com a
+   imagem que o CI/CD publicou (a imagem é `ignore_changes`, o `apply` não a
+   reverte).
+4. **Imagem do Job novo.** Ele nasce com `var.api_image` e o CI/CD não o
+   atualiza (mesma situação da Fase 4, passo 6):
+
+   ```bash
+   gcloud run jobs update papelhub-prod-notify-readings \
+     --image "${IMAGE}:<SHA-do-merge>" \
+     --project="$PROJECT_ID" --region="$REGION"
+   ```
+
+   Aproveite para alinhar os outros dois Jobs agendados à mesma imagem (o laço
+   da Fase 4, passo 6).
+5. **Executar o Job novo uma vez à mão** e conferir nos logs que terminou sem
+   erro — é o único jeito de saber antes das 03:45 que o entrypoint e a imagem
+   estão certos:
+
+   ```bash
+   gcloud run jobs execute papelhub-prod-notify-readings \
+     --project="$PROJECT_ID" --region="$REGION" --wait
+   ```
+
+6. **Contato do suporte (opcional).** Quando o cliente informar, definir
+   `app_support_contact` no `terraform.tfvars` e repetir o `apply` — ou, sem
+   Terraform, `gcloud run services update papelhub-prod-api
+   --update-env-vars APP_SUPPORT_CONTACT=...`. Vazio, o aviso simplesmente não
+   aparece no login.
+7. **Validação:** abrir a URL de produção, conferir login e shell com a
+   identidade da Forte Saúde, e o manual publicado com o novo cabeçalho (o push
+   na `main` tocou `docs/manual/**`, então o `docs.yml` republica).
 
 ## Armadilhas
 

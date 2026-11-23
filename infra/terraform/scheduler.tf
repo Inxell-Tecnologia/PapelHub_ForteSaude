@@ -421,7 +421,12 @@ resource "google_cloud_run_v2_job" "notify_readings" {
       containers {
         image   = var.api_image
         command = ["node"]
-        args    = ["dist/jobs/notify-readings.js"]
+        # Caminho relativo ao WORKDIR `/app` do Dockerfile — mesma correção que
+        # o fork aplicou aos Jobs de expurgo e de avisos de permissão
+        # (commit ffbcbec, change implantacao-fortesaude). O upstream trouxe
+        # este Job com `dist/jobs/...`, que não existe na imagem: falharia com
+        # "Cannot find module" toda noite às 03:45, em silêncio.
+        args    = ["apps/api/dist/jobs/notify-readings.js"]
 
         resources {
           limits = {
