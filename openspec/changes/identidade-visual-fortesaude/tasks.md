@@ -17,7 +17,9 @@
       o índigo e sobre a superfície clara sem halo.
 - [x] 1.3 Remover `isetes-logo-branca.png`, `isetes-logo-cor.png` e
       `isetes-simbolo.png` de `apps/web/public/`. Verificar:
-      `grep -rn "isetes-" apps/web/src` não encontra nada.
+      `grep -rnE "isetes-(logo|simbolo)" apps/web/src docs/manual` não encontra
+      nada (o padrão solto `isetes-` casa com nomes de change citados em
+      comentários, que permanecem como rastro).
 
 ## 2. Paleta
 

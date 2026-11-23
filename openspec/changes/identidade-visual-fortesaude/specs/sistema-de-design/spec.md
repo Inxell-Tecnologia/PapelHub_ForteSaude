@@ -1,10 +1,5 @@
 # Spec Delta
 
-## RENAMED Requirements
-
-- FROM: `### Requirement: Verde da marca não é usado como fundo de texto branco`
-- TO: `### Requirement: Cor de destaque da marca não é usada como fundo de texto branco`
-
 ## MODIFIED Requirements
 
 ### Requirement: Paleta da marca é normatizada por função
@@ -14,9 +9,7 @@ preferência de tela: navegação lateral em degradê índigo derivado do azul d
 logomarca, item de navegação ativo na cor de destaque (o laranja da logomarca),
 ação principal na cor de ação (laranja escurecido), links em azul derivado da
 logomarca, e superfícies e bordas na família neutra clara. A função de cada cor
-NÃO SHALL variar por tela, por papel nem por unidade. As cores da marca SHALL
-ser derivadas das cores da logomarca do cliente, e cada par normatizado SHALL
-ser reapurado por cálculo sempre que a derivação mudar.
+NÃO SHALL variar por tela, por papel nem por unidade.
 
 #### Scenario: Navegação lateral apresenta o degradê da marca
 - **WHEN** uma pessoa autenticada visualiza o shell em tela larga
@@ -27,10 +20,19 @@ ser reapurado por cálculo sempre que a derivação mudar.
 - **WHEN** uma pessoa compara a ação principal de duas telas distintas
 - **THEN** ambas apresentam a mesma cor de ação principal
 
-#### Scenario: Paleta deriva da logomarca
-- **WHEN** a paleta da marca é definida ou alterada
-- **THEN** cada cor de marca corresponde a uma das cores da logomarca ou a um
-  tom dela, e seus pares de contraste são apurados numericamente
+## REMOVED Requirements
+
+### Requirement: Verde da marca não é usado como fundo de texto branco
+
+**Reason**: a paleta deixa de ser a do Instituto SETES. O verde da marca e o
+verde de ação não existem mais na interface da Forte Saúde; a regra que eles
+expressavam continua valendo, agora sobre o laranja da logomarca.
+
+**Migration**: substituído pelo requisito "Cor de destaque da marca não é usada
+como fundo de texto branco" (ADDED abaixo), de mesma regra e mesmos cenários,
+reescritos com as funções da nova paleta.
+
+## ADDED Requirements
 
 ### Requirement: Cor de destaque da marca não é usada como fundo de texto branco
 
@@ -50,3 +52,15 @@ fundo escuro, sempre com texto escuro sobre si.
   a navegação escura
 - **THEN** a cor de destaque da marca é empregada, com rótulo escuro, por não
   carregar texto branco sobre si nessa função
+
+### Requirement: Paleta da marca deriva da logomarca do cliente
+
+As cores da marca SHALL ser derivadas das cores da logomarca do cliente — cada
+uma delas ou um tom delas —, e cada par normatizado SHALL ser reapurado por
+cálculo sempre que a derivação mudar. Referência: change
+`identidade-visual-fortesaude`, design.md D3.
+
+#### Scenario: Paleta deriva da logomarca
+- **WHEN** a paleta da marca é definida ou alterada
+- **THEN** cada cor de marca corresponde a uma das cores da logomarca ou a um
+  tom dela, e seus pares de contraste são apurados numericamente
