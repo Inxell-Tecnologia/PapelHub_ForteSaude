@@ -8,7 +8,9 @@ privado, emissão de URLs assinadas com auditoria, isolamento por unidade,
 paridade dev↔prod, segredos, jobs agendados e o pipeline de entrega. Não cobre
 nenhuma feature de produto (login, navegador, permissões de negócio, painel),
 que virão como mudanças próprias.
+
 ## Requirements
+
 ### Requirement: Armazenamento privado por padrão
 
 O sistema SHALL armazenar os bytes dos arquivos em um bucket de object storage
@@ -52,7 +54,6 @@ e registrem um evento de auditoria no momento da emissão.
   evento de acesso ao conteúdo.
 
 ### Requirement: Prazo próprio da URL assinada de envio
-
 
 O sistema SHALL assinar as URLs de envio com um prazo de validade **próprio da
 operação de envio**, configurável por ambiente e independente dos prazos de
@@ -481,3 +482,21 @@ permanecer válidos sem exceção durante e após a troca.
   foi executado
 - **THEN** não existe nenhuma conta utilizável e um acesso direto a objeto do
   bucket sem URL assinada é negado sem retornar bytes ou preview.
+
+### Requirement: Rotina diária de avisos de leitura obrigatória agendada
+
+A infraestrutura de produção SHALL provisionar a rotina diária de avisos de
+leitura obrigatória como job em container com agendador próprio, em horário
+distinto das demais rotinas diárias, e o ambiente de desenvolvimento SHALL
+executá-la sob demanda pelo mesmo código. Referência: PRD US 12.5; design.md
+D4 do change `avisos-e-atrasos`.
+
+#### Scenario: Job e agendador provisionados
+- **WHEN** a infraestrutura de produção é provisionada
+- **THEN** existe um job da rotina de avisos de leitura e um agendador que o
+  dispara diariamente às 03:45, depois do expurgo e dos avisos de concessão
+
+#### Scenario: Execução sob demanda em desenvolvimento
+- **WHEN** alguém executa a rotina pelo script do workspace da API
+- **THEN** ela roda o mesmo código do job de produção e informa quantos avisos
+  emitiu e quantos falharam

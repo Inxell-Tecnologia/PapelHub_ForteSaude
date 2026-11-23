@@ -157,6 +157,10 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "APP_MANUAL_URL"
         value = var.app_manual_url
       }
+      env {
+        name  = "APP_SUPPORT_CONTACT"
+        value = var.app_support_contact
+      }
       # O Cloud Run já injeta os segredos (AUTH_SESSION_SECRET, DATABASE_URL)
       # como variáveis de ambiente resolvidas a partir do Secret Manager, via
       # `value_source.secret_key_ref` abaixo (design.md: "valores sensíveis no

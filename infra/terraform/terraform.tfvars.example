@@ -62,3 +62,9 @@ bootstrap_admin_email = "admin@papelhub.com"
 # da GitHub Pages deste repositório; um override redundante é mais um valor
 # para divergir (design.md D5). Só preencher se esta implantação publicar o
 # manual em outro lugar.
+
+# Contato do suporte exibido na tela de login a quem não consegue entrar
+# (design.md D8 do change identidade-visual-isetes). Texto livre — e-mail,
+# ramal ou ambos. Vazio (padrão) = nenhum aviso de contato é exibido.
+# Contato da Forte Saúde ainda a definir com o cliente.
+# app_support_contact = "<e-mail ou ramal do suporte da Forte Saúde>"

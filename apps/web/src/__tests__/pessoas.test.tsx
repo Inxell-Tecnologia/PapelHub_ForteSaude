@@ -31,7 +31,8 @@ function person(overrides: Partial<PersonResponse> & { id: string }): PersonResp
     email: `${overrides.id}@example.com`,
     phone: null,
     jobTitle: null,
-    workArea: null,
+    sectorId: null,
+    sectorName: null,
     notes: null,
     role: UserRole.COLLABORATOR,
     status: PersonStatus.ACTIVE,
@@ -99,6 +100,26 @@ async function selectFromField(
     return container as HTMLElement;
   });
   await userEvent.click(await within(dropdown).findByText(optionLabel));
+}
+
+/**
+ * Abre o `Select` de um `Form.Item` (pelo rótulo) e devolve o seu dropdown,
+ * para os casos que **inspecionam** as opções em vez de escolher uma. Escopar
+ * é obrigatório desde que o formulário passou a ter dois seletores — Setor e
+ * Papel (change `funcao-e-setor-na-identidade`).
+ */
+async function openDropdownOfField(dialog: HTMLElement, fieldLabel: string): Promise<HTMLElement> {
+  const item = within(dialog).getByText(fieldLabel).closest('.ant-form-item') as HTMLElement;
+  const combobox = within(item).getByRole('combobox');
+  await userEvent.click(combobox);
+  return waitFor(() => {
+    const listboxId = combobox.getAttribute('aria-controls') ?? combobox.getAttribute('aria-owns');
+    const container = listboxId
+      ? document.getElementById(listboxId)?.closest('.ant-select-dropdown')
+      : null;
+    if (!container) throw new Error(`dropdown de ${fieldLabel} ainda não está no DOM`);
+    return container as HTMLElement;
+  });
 }
 
 /** Atalho para o seletor de papel (rótulo "Papel"). */
@@ -252,6 +273,78 @@ describe('Gestão de pessoas da SPA (web-pessoas)', () => {
     await screen.findByText('Beltrano Souza');
   });
 
+  /**
+   * Setor na edição (change `funcao-e-setor-na-identidade`, capability
+   * `web-pessoas`, requisito "Edição de perfil, papel e status da pessoa").
+   * O que importa é o **corpo enviado**: trocar manda o id, limpar manda
+   * `null` — e `null` é o que remove o vínculo, porque omitir o campo o
+   * preservaria.
+   */
+  it('edição troca o setor e, ao limpar a escolha, envia null para remover o vínculo', async () => {
+    const semSetor = person({ id: 'person-1', fullName: 'Beltrano Silva' });
+    const comSetor = { ...semSetor, sectorId: 'sec-1', sectorName: 'CME' };
+
+    mockFetch({
+      'GET /auth/me': { status: 200, body: UNIT_ADMIN },
+      'GET /users': [
+        { status: 200, body: [semSetor] },
+        { status: 200, body: [comSetor] },
+        { status: 200, body: [semSetor] },
+      ],
+      'GET /sectors': {
+        status: 200,
+        body: [
+          {
+            id: 'sec-1',
+            unitId: 'unit-1',
+            name: 'CME',
+            createdAt: '2026-11-01T10:00:00.000Z',
+            peopleCount: 0,
+          },
+        ],
+      },
+      'PATCH /users/person-1': [
+        { status: 200, body: comSetor },
+        { status: 200, body: semSetor },
+      ],
+    });
+
+    renderApp(['/admin/pessoas']);
+    await screen.findByText('Beltrano Silva');
+
+    // 1) vincular
+    let row = screen.getByText('Beltrano Silva').closest('tr')!;
+    await userEvent.click(within(row).getByRole('button', { name: 'Editar' }));
+    let dialog = await findDialogByTitle('Editar colaborador');
+    await selectFromField(dialog, 'Setor', 'CME');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => {
+      const bodies = requestBodies('PATCH', '/users/person-1') as Record<string, unknown>[];
+      expect(bodies[0]).toMatchObject({ sectorId: 'sec-1' });
+    });
+    // Escopado à tabela: "CME" também existe como opção no portal do `Select`,
+    // que segue montado depois de o diálogo fechar.
+    const tabela = await screen.findByRole('table');
+    await waitFor(() => expect(within(tabela).getByText('CME')).toBeInTheDocument());
+
+    // 2) limpar a escolha
+    row = within(tabela).getByText('Beltrano Silva').closest('tr')!;
+    await userEvent.click(within(row).getByRole('button', { name: 'Editar' }));
+    dialog = await findDialogByTitle('Editar colaborador');
+    const item = within(dialog).getByText('Setor').closest('.ant-form-item') as HTMLElement;
+    await userEvent.click(item.querySelector('.ant-select-clear') as HTMLElement);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => {
+      const bodies = requestBodies('PATCH', '/users/person-1') as Record<string, unknown>[];
+      expect(bodies).toHaveLength(2);
+      // `null`, não ausente: é a diferença entre remover o vínculo e
+      // preservá-lo em silêncio.
+      expect(bodies[1]).toHaveProperty('sectorId', null);
+    });
+  });
+
   it('desativar chama PATCH com status disabled após confirmação; reativar chama com status active; não há ação de exclusão (spec: desativar / reativar / não há exclusão permanente)', async () => {
     const ativa = person({
       id: 'person-1',
@@ -319,10 +412,7 @@ describe('Gestão de pessoas da SPA (web-pessoas)', () => {
     // própria linha, modo editar: seletor de papel não oferece rebaixar (Colaborador) nem global_admin
     await userEvent.click(within(selfRow).getByRole('button', { name: 'Editar' }));
     const selfDialog = await findDialogByTitle('Editar colaborador');
-    await userEvent.click(within(selfDialog).getByRole('combobox'));
-    let dropdown = await waitFor(
-      () => document.querySelector('.ant-select-dropdown') as HTMLElement,
-    );
+    let dropdown = await openDropdownOfField(selfDialog, 'Papel');
     expect(within(dropdown).queryByText('Colaborador')).not.toBeInTheDocument();
     expect(within(dropdown).queryByText('Administrador global')).not.toBeInTheDocument();
     expect(within(dropdown).getByText('Administrador da unidade')).toBeInTheDocument();
@@ -332,8 +422,7 @@ describe('Gestão de pessoas da SPA (web-pessoas)', () => {
     // cadastro: unit_admin não vê global_admin
     await userEvent.click(screen.getByRole('button', { name: /novo colaborador/i }));
     const createDialog = await findDialogByTitle('Novo colaborador');
-    await userEvent.click(within(createDialog).getByRole('combobox'));
-    dropdown = await waitFor(() => document.querySelector('.ant-select-dropdown') as HTMLElement);
+    dropdown = await openDropdownOfField(createDialog, 'Papel');
     expect(within(dropdown).queryByText('Administrador global')).not.toBeInTheDocument();
     expect(within(dropdown).getByText('Colaborador')).toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
@@ -466,6 +555,102 @@ describe('Gestão de pessoas da SPA (web-pessoas)', () => {
     const dialog = await findDialogByTitle('Novo colaborador');
     // sem campo "Unidade" no formulário
     expect(within(dialog).queryByText('Unidade')).not.toBeInTheDocument();
+  });
+
+  describe('Busca de colaborador (change `busca-de-colaboradores`, design.md D1–D3)', () => {
+    function usersCalls(): number {
+      return (global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter((call) =>
+        String(call[0]).endsWith('/users'),
+      ).length;
+    }
+
+    it('filtra sem acento pelo nome e pelo setor; limpar restaura; digitar não consulta o servidor (spec: busca por trecho do nome / por setor / limpar / sem nova consulta)', async () => {
+      const joao = person({ id: 'p-joao', fullName: 'João Pereira', sectorName: 'Farmácia' });
+      const maria = person({ id: 'p-maria', fullName: 'Maria Souza' });
+      mockFetch({
+        'GET /auth/me': { status: 200, body: UNIT_ADMIN },
+        'GET /users': { status: 200, body: [joao, maria] },
+      });
+
+      renderApp(['/admin/pessoas']);
+      await screen.findByText('João Pereira');
+      const chamadasAntes = usersCalls();
+      const busca = screen.getByRole('searchbox', { name: 'Buscar colaborador' });
+
+      await userEvent.type(busca, 'joao');
+      expect(screen.getByText('João Pereira')).toBeInTheDocument();
+      expect(screen.queryByText('Maria Souza')).not.toBeInTheDocument();
+
+      await userEvent.clear(busca);
+      await userEvent.type(busca, 'FARMACIA');
+      expect(screen.getByText('João Pereira')).toBeInTheDocument();
+      expect(screen.queryByText('Maria Souza')).not.toBeInTheDocument();
+
+      await userEvent.clear(busca);
+      expect(screen.getByText('João Pereira')).toBeInTheDocument();
+      expect(screen.getByText('Maria Souza')).toBeInTheDocument();
+
+      expect(usersCalls()).toBe(chamadasAntes);
+    });
+
+    it('busca sem resultado mostra "Nenhum colaborador encontrado" (spec: busca sem resultado)', async () => {
+      mockFetch({
+        'GET /auth/me': { status: 200, body: UNIT_ADMIN },
+        'GET /users': { status: 200, body: [person({ id: 'p-1', fullName: 'Beltrano' })] },
+      });
+
+      renderApp(['/admin/pessoas']);
+      await screen.findByText('Beltrano');
+      await userEvent.type(
+        screen.getByRole('searchbox', { name: 'Buscar colaborador' }),
+        'inexistente',
+      );
+      expect(screen.queryByText('Beltrano')).not.toBeInTheDocument();
+      expect(screen.getByText('Nenhum colaborador encontrado')).toBeInTheDocument();
+    });
+
+    it('global_admin encontra as pessoas pelo nome da unidade (spec: administrador global busca pela unidade)', async () => {
+      const pessoaA = person({ id: 'p-a', fullName: 'Colaborador A', unitId: 'unit-a' });
+      const pessoaB = person({ id: 'p-b', fullName: 'Colaborador B', unitId: 'unit-b' });
+      mockFetch({
+        'GET /auth/me': { status: 200, body: GLOBAL_ADMIN },
+        'GET /users': { status: 200, body: [pessoaA, pessoaB] },
+        'GET /units': { status: 200, body: [UNIT_A, UNIT_B] },
+      });
+
+      renderApp(['/admin/pessoas']);
+      await screen.findByText('Colaborador A');
+      await waitFor(() => expect(screen.getAllByText('Unidade B').length).toBeGreaterThan(0));
+
+      await userEvent.type(
+        screen.getByRole('searchbox', { name: 'Buscar colaborador' }),
+        'unidade b',
+      );
+      expect(screen.getByText('Colaborador B')).toBeInTheDocument();
+      expect(screen.queryByText('Colaborador A')).not.toBeInTheDocument();
+    });
+
+    it('mudar o termo volta à primeira página (spec: mudar o termo volta à primeira página)', async () => {
+      const pessoas = Array.from({ length: 15 }, (_, i) =>
+        person({ id: `p-${i}`, fullName: `Colaborador ${String(i).padStart(2, '0')}` }),
+      );
+      mockFetch({
+        'GET /auth/me': { status: 200, body: UNIT_ADMIN },
+        'GET /users': { status: 200, body: pessoas },
+      });
+
+      renderApp(['/admin/pessoas']);
+      await screen.findByText('Colaborador 00');
+      await userEvent.click(screen.getByTitle('2'));
+      expect(await screen.findByText('Colaborador 10')).toBeInTheDocument();
+
+      await userEvent.type(
+        screen.getByRole('searchbox', { name: 'Buscar colaborador' }),
+        'colaborador',
+      );
+      expect(screen.getByText('Colaborador 00')).toBeInTheDocument();
+      expect(screen.queryByText('Colaborador 10')).not.toBeInTheDocument();
+    });
   });
 
   describe('Cota individual (change `cota-por-usuario`, design.md D3/D5/D7)', () => {

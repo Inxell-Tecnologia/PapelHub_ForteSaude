@@ -40,12 +40,15 @@ locals {
     "/folders",
     "/users",
     "/units",
+    "/sectors",
     "/grants",
     "/trash",
     "/audit",
     "/dashboard",
     "/search",
     "/notifications",
+    "/favorites",
+    "/reading",
     "/health",
   ]
 }
