@@ -231,7 +231,7 @@ describe('Gestão de pessoas da SPA (web-pessoas)', () => {
     expect(within(dialog).getByLabelText('E-mail')).toHaveValue('ja-existe@example.com');
   });
 
-  it('edição altera os dados da pessoa via PATCH /users/:id; o formulário não tem senha e o e-mail é somente-leitura (spec: edição altera os dados / não expõe senha nem e-mail)', async () => {
+  it('edição altera os dados da pessoa via PATCH /users/:id; o formulário não tem senha e o e-mail inalterado não vai no corpo (spec: edição altera os dados / não expõe troca de senha)', async () => {
     const pessoa = person({
       id: 'person-1',
       fullName: 'Beltrano Silva',
@@ -255,7 +255,7 @@ describe('Gestão de pessoas da SPA (web-pessoas)', () => {
 
     const dialog = await findDialogByTitle('Editar colaborador');
     expect(within(dialog).queryByLabelText('Senha inicial')).not.toBeInTheDocument();
-    expect(within(dialog).getByLabelText('E-mail')).toBeDisabled();
+    expect(within(dialog).getByLabelText('E-mail')).toBeEnabled();
 
     const nameInput = within(dialog).getByLabelText('Nome');
     await userEvent.clear(nameInput);
@@ -271,6 +271,118 @@ describe('Gestão de pessoas da SPA (web-pessoas)', () => {
     });
 
     await screen.findByText('Beltrano Souza');
+  });
+
+  /**
+   * Troca de e-mail na edição (change `edicao-email-pessoa`, capability
+   * `web-pessoas`, design.md D6): o e-mail vai no corpo só quando muda; o
+   * formato é validado antes de chamar a API; o 409 de e-mail em uso cai no
+   * campo, com o modal aberto; e um aviso lembra que o login muda.
+   */
+  describe('troca de e-mail na edição', () => {
+    const pessoa = person({
+      id: 'person-1',
+      fullName: 'Beltrano Silva',
+      email: 'beltrano@example.com',
+    });
+
+    async function abrirEdicao(): Promise<HTMLElement> {
+      renderApp(['/admin/pessoas']);
+      await screen.findByText('Beltrano Silva');
+      const row = screen.getByText('Beltrano Silva').closest('tr')!;
+      await userEvent.click(within(row).getByRole('button', { name: 'Editar' }));
+      return findDialogByTitle('Editar colaborador');
+    }
+
+    const AVISO = /passará a entrar com este novo e-mail/;
+
+    it('e-mail alterado vai no PATCH e a listagem reflete o novo e-mail (spec: edição troca o e-mail)', async () => {
+      const editada = { ...pessoa, email: 'beltrano.silva@example.com' };
+      mockFetch({
+        'GET /auth/me': { status: 200, body: UNIT_ADMIN },
+        'GET /users': [
+          { status: 200, body: [pessoa] },
+          { status: 200, body: [editada] },
+        ],
+        'PATCH /users/person-1': { status: 200, body: editada },
+      });
+      const dialog = await abrirEdicao();
+      const email = within(dialog).getByLabelText('E-mail');
+      await userEvent.clear(email);
+      await userEvent.type(email, 'beltrano.silva@example.com');
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }));
+
+      await waitFor(() => {
+        const bodies = requestBodies('PATCH', '/users/person-1') as Record<string, unknown>[];
+        expect(bodies).toHaveLength(1);
+        expect(bodies[0]).toMatchObject({ email: 'beltrano.silva@example.com' });
+      });
+      await screen.findByText('beltrano.silva@example.com');
+    });
+
+    it('e-mail vazio ou inválido sinaliza o campo e não chama PATCH (spec: e-mail em formato inválido não é enviado)', async () => {
+      mockFetch({
+        'GET /auth/me': { status: 200, body: UNIT_ADMIN },
+        'GET /users': { status: 200, body: [pessoa] },
+        'PATCH /users/person-1': { status: 200, body: pessoa },
+      });
+      const dialog = await abrirEdicao();
+      const email = within(dialog).getByLabelText('E-mail');
+      await userEvent.clear(email);
+      await userEvent.type(email, 'nao-e-email');
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }));
+
+      await within(dialog).findByText('Informe um e-mail válido');
+      expect(requestBodies('PATCH', '/users/person-1')).toHaveLength(0);
+    });
+
+    it('409 de e-mail em uso sinaliza no campo e mantém o modal preenchido (spec: troca para e-mail já usado)', async () => {
+      mockFetch({
+        'GET /auth/me': { status: 200, body: UNIT_ADMIN },
+        'GET /users': { status: 200, body: [pessoa] },
+        'PATCH /users/person-1': { status: 409, body: { error: 'email already in use' } },
+      });
+      const dialog = await abrirEdicao();
+      const email = within(dialog).getByLabelText('E-mail');
+      await userEvent.clear(email);
+      await userEvent.type(email, 'ja-existe@example.com');
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }));
+
+      await within(dialog).findByText('E-mail já está em uso');
+      expect(within(dialog).getByLabelText('E-mail')).toHaveValue('ja-existe@example.com');
+      expect(within(dialog).getByLabelText('Nome')).toHaveValue('Beltrano Silva');
+    });
+
+    it('409 de setor inválido não é confundido com e-mail em uso (spec: outro 409 da edição)', async () => {
+      mockFetch({
+        'GET /auth/me': { status: 200, body: UNIT_ADMIN },
+        'GET /users': { status: 200, body: [pessoa] },
+        'PATCH /users/person-1': { status: 409, body: { error: 'invalid_sector' } },
+      });
+      const dialog = await abrirEdicao();
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }));
+
+      await within(dialog).findByText('Setor indisponível; escolha outro');
+      expect(within(dialog).queryByText('E-mail já está em uso')).not.toBeInTheDocument();
+    });
+
+    it('aviso de login aparece ao alterar o e-mail e some ao restaurar o original (spec: aviso de efeito da troca)', async () => {
+      mockFetch({
+        'GET /auth/me': { status: 200, body: UNIT_ADMIN },
+        'GET /users': { status: 200, body: [pessoa] },
+      });
+      const dialog = await abrirEdicao();
+      expect(within(dialog).queryByText(AVISO)).not.toBeInTheDocument();
+
+      const email = within(dialog).getByLabelText('E-mail');
+      await userEvent.clear(email);
+      await userEvent.type(email, 'outro@example.com');
+      await within(dialog).findByText(AVISO);
+
+      await userEvent.clear(email);
+      await userEvent.type(email, 'beltrano@example.com');
+      await waitFor(() => expect(within(dialog).queryByText(AVISO)).not.toBeInTheDocument());
+    });
   });
 
   /**

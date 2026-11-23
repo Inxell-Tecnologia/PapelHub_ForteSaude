@@ -47,6 +47,15 @@ export interface CreatePersonRequest {
 
 export interface UpdatePersonRequest {
   fullName?: string;
+  /**
+   * Troca do e-mail — o **login** da pessoa (change `edicao-email-pessoa`).
+   * Alcance é o da **edição**, não o da redefinição de senha (design.md D1):
+   * trocar o e-mail não entrega a conta, porque a senha continua a do dono.
+   * O novo e-mail vale para o login na requisição seguinte; o antigo deixa de
+   * autenticar; sessões abertas continuam. E-mail de outra pessoa → 409
+   * `email already in use`, com recusa total; vazio → 400.
+   */
+  email?: string;
   phone?: string;
   jobTitle?: string;
   /**

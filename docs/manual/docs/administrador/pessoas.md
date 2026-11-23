@@ -25,9 +25,25 @@ Confirme em **Cadastrar**. O colaborador passa a poder entrar com essas credenci
 
 - Se o **e-mail já estiver em uso**, o cadastro é recusado e o campo é sinalizado —
   ajuste o e-mail sem perder o resto do preenchimento.
-- Para **editar** um colaborador, clique em **Editar** na linha dele. O **e-mail** não
-  pode ser alterado na edição; os demais dados, o setor e o papel, sim. Para
+- Para **editar** um colaborador, clique em **Editar** na linha dele. Nome,
+  **e-mail**, telefone, função, setor, observação e papel podem ser alterados. Para
   deixar a pessoa **sem setor**, limpe a escolha no campo Setor.
+
+### Corrigir o e-mail de um colaborador
+
+O e-mail é o **login** da pessoa. Para corrigir um e-mail cadastrado errado, abra
+**Editar** na linha dela, troque o e-mail e clique em **Salvar**.
+
+- A pessoa passa a entrar **com o novo e-mail e a mesma senha** a partir desse
+  momento; o e-mail antigo deixa de funcionar. Se ela já estiver com o sistema
+  aberto, continua usando normalmente.
+- **O sistema não avisa a pessoa** — o formulário mostra um lembrete enquanto o
+  e-mail estiver alterado. Comunique a troca você mesmo.
+- Se o novo e-mail **já pertencer a outra conta**, a alteração é recusada e o campo
+  é sinalizado; nada do que você alterou no formulário é salvo até corrigir.
+- O administrador da unidade troca o e-mail dos **colaboradores da sua unidade**;
+  o administrador global troca o de **qualquer pessoa**, inclusive o próprio — as
+  mesmas regras de "Quem pode editar quem", mais abaixo.
 
 ## Encontrar um colaborador
 
@@ -136,8 +152,8 @@ próprio acesso — por isso a ação **Desativar** não aparece na sua própria
 
 !!! warning "Editar não é o mesmo que redefinir a senha"
 
-    Um administrador global edita outro administrador global — inclusive o papel,
-    o status e a cota —, mas **não redefine a senha dele**. A senha de um
+    Um administrador global edita outro administrador global — inclusive o
+    e-mail, o papel, o status e a cota —, mas **não redefine a senha dele**. A senha de um
     administrador global só muda por ele mesmo, em **Minha conta**. É por isso
     que as duas tabelas desta página são diferentes.
 

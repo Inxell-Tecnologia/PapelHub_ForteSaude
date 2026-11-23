@@ -57,7 +57,8 @@ const ROLE_RANK: Record<UserRole, number> = {
 /**
  * `Modal` + `Form` de criar/editar pessoa (US 1.1, `web-pessoas`, design.md
  * D3). Cadastro chama `POST /users` (com senha inicial); edição chama
- * `PATCH /users/:id` (sem senha, e-mail somente-leitura).
+ * `PATCH /users/:id` (sem senha; o e-mail é editável desde o change
+ * `edicao-email-pessoa`).
  */
 export function PessoaFormModal({ target, open, onClose }: PessoaFormModalProps) {
   const { message } = App.useApp();
@@ -91,6 +92,13 @@ export function PessoaFormModal({ target, open, onClose }: PessoaFormModalProps)
     typeof cotaGbDigitada === 'number' &&
     cotaGbDigitada * BYTES_POR_GB < (target?.storageUsedBytes ?? 0);
   const { data: units } = useUnits({ onlyActive: true, enabled: showUnitSelector });
+
+  // Troca de e-mail (change `edicao-email-pessoa`, design.md D6): o e-mail é o
+  // login, e o sistema não avisa a pessoa — o aviso existe para que o
+  // administrador comunique a troca. Só aparece quando o valor difere do atual.
+  const emailDigitado = Form.useWatch('email', form);
+  const emailAlterado =
+    isEdit && typeof emailDigitado === 'string' && emailDigitado !== target.email;
 
   // Unidade de **destino** do cadastro, que é quem define a lista de setores
   // oferecida (change `funcao-e-setor-na-identidade`, capability
@@ -183,6 +191,9 @@ export function PessoaFormModal({ target, open, onClose }: PessoaFormModalProps)
           id: target.id,
           body: {
             fullName: values.fullName,
+            // Só vai no corpo se mudou (design.md D6): não sobrescreve uma
+            // troca concorrente com o valor que o formulário carregou.
+            ...(values.email !== target.email ? { email: values.email } : {}),
             phone: values.phone || undefined,
             jobTitle: values.jobTitle || undefined,
             // `null` (não `undefined`) quando a escolha foi limpa: é o que
@@ -252,7 +263,9 @@ export function PessoaFormModal({ target, open, onClose }: PessoaFormModalProps)
       }
       // design.md D6: 409 (e-mail já em uso) sinaliza no campo, mantendo o
       // modal aberto com o restante preenchido — não é uma falha genérica.
-      if (err instanceof ApiError && err.status === 409) {
+      // Vale no cadastro e, desde o change `edicao-email-pessoa`, na edição;
+      // casa pela mensagem para não engolir um 409 de outra natureza.
+      if (err instanceof ApiError && err.status === 409 && err.message === 'email already in use') {
         form.setFields([{ name: 'email', errors: ['E-mail já está em uso'] }]);
         return;
       }
@@ -286,11 +299,14 @@ export function PessoaFormModal({ target, open, onClose }: PessoaFormModalProps)
         <Form.Item
           name="email"
           label="E-mail"
-          rules={
-            isEdit ? [] : [{ required: true, type: 'email', message: 'Informe um e-mail válido' }]
+          rules={[{ required: true, type: 'email', message: 'Informe um e-mail válido' }]}
+          extra={
+            emailAlterado
+              ? 'A pessoa passará a entrar com este novo e-mail, com a mesma senha. O sistema não a avisa: comunique a troca.'
+              : undefined
           }
         >
-          <Input disabled={isEdit} autoComplete="off" />
+          <Input autoComplete="off" />
         </Form.Item>
         {!isEdit && (
           <Form.Item
