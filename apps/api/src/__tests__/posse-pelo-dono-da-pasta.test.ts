@@ -547,6 +547,10 @@ describe('Posse pelo dono da pasta', () => {
         .set('Cookie', await cookie(carlos))
         .send({ contentType: 'application/pdf', declaredSizeBytes: 20 });
       expect(cabe.status).toBe(200);
+      // Substituir versão não troca autor nem dono (spec `posse-e-autoria`).
+      const depois = await fileRow(id);
+      expect(depois.uploaded_by).toBe(carlos);
+      expect(depois.owner_id).toBe(daniel);
 
       await setQuota(daniel, 10, 5);
       const naoCabe = await request(app())
