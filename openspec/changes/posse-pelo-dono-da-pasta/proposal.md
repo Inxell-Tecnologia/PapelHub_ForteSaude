@@ -81,6 +81,7 @@ Fora de escopo (mudança futura, se necessário):
 - `permissoes-granulares`: concessões automáticas por autoria convivem com as
   manuais (identificáveis, revogáveis pela administração, sem `delete`).
 - `auditoria`: evento de envio concluído, atribuído a quem enviou.
+- `busca`: o filtro de autor passa a considerar quem enviou o arquivo, não o dono.
 - `web-upload`: viabilidade e recusa por espaço quando o destino é de outra pessoa.
 
 ## Impact
